@@ -4,8 +4,10 @@ class Webhooks::TelegramEventsJob < ApplicationJob
   def perform(params = {})
     return unless params[:bot_token]
 
+    bot_token_prefix = params[:bot_token].to_s.split(':', 2).first
+
     channel = Channel::Telegram
-      .where("bot_token LIKE ?", "#{params[:bot_token]}:%")
+      .where("bot_token LIKE ?", "#{bot_token_prefix}:%")
       .first
 
     if channel_is_inactive?(channel)
