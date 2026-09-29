@@ -86,9 +86,36 @@ Credentials must be stored as deployment secrets/environment variables and must 
 
 The bucket should remain private unless a specific application requirement establishes otherwise.
 
+### OCI S3-compatible credential mapping
+
+The OCI Console terminology is easy to confuse with generic S3 terminology. For the current validation environment, map the values as follows:
+
+| Render environment variable | OCI Console source |
+|---|---|
+| `STORAGE_ACCESS_KEY_ID` | **Profile → User settings → Customer secret keys → copy Access key** |
+| `STORAGE_SECRET_ACCESS_KEY` | **Profile → User settings → Customer secret keys → Generate secret key → copy the one-time visible Secret key value** |
+| `STORAGE_BUCKET_NAME` | OCI Object Storage bucket name |
+| `STORAGE_REGION` | OCI region, currently `ap-hyderabad-1` |
+| `STORAGE_ENDPOINT` | OCI S3-compatible endpoint, not a Pre-Authenticated Request (PAR) URL |
+
+Important: the OCI User OCID is **not** the S3-compatible Access Key ID. The Customer Secret Key's Access key is the value used for `STORAGE_ACCESS_KEY_ID`, while the one-time visible Secret key is used for `STORAGE_SECRET_ACCESS_KEY`.
+
+Do not use an OCI Pre-Authenticated Request URL as the Chatwoot storage endpoint. PAR URLs contain a temporary authorization token and are a different access mechanism.
+
 Attachment upload/download should be tested end-to-end before considering the object-storage integration validated.
 
 ## Queue / cache
+
+### Web concurrency versus background workers
+
+These are two different kinds of workers/processes and must not be conflated.
+
+- **Puma/Web workers** serve HTTP requests for the Chatwoot UI, APIs, webhooks and other synchronous web traffic. The repository's `config/puma.rb` defaults `WEB_CONCURRENCY` to `0`, which means one Puma process rather than zero web service capability. Concurrency within that process is controlled by `RAILS_MIN_THREADS` / `RAILS_MAX_THREADS`; the current validation configuration uses 5 threads.
+- **Sidekiq workers** are separate background worker processes. They consume Redis/Valkey-backed jobs such as Chatwoot's asynchronous webhook processing and other background work. For the WISE Support Telegram/Chatwoot flow, the Render Background Worker is therefore required for the queued work to be processed after the Web service accepts/enqueues it.
+- `WEB_CONCURRENCY=0` does **not** disable Sidekiq and does **not** mean that Chatwoot cannot serve multiple end users. It only avoids Puma's clustered multi-process mode, which is appropriate for the small validation instance.
+- Multiple patients/end users and multiple support agents are supported at the application level. The validation topology should use one Web service plus a separate Sidekiq Worker; scaling capacity later can be addressed independently by increasing web capacity and/or Sidekiq concurrency/workers as workload requires.
+
+For the initial pilot, 1–2 support agents and multiple concurrent patient conversations are a valid workload for the architecture. The Free validation instance is a capacity-test environment, not a production capacity target.
 
 The current validation path uses Render Key Value as the Redis-compatible dependency.
 
