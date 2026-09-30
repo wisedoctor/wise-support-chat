@@ -241,6 +241,14 @@ The images are downloaded but not yet started. No Chatwoot application state has
 
 
 
+
+#### Private Docker network created — 2026-09-30
+Created the Docker network `wise-support-net` on the OCI validation VM.
+Network ID:
+`d5b39d3d75b17f95456ef724e515ffe23e35b7c9cd2af7fe48e14aca95a32269`.
+
+The network will be used for private container-to-container communication between Chatwoot, PostgreSQL, and Redis without publicly exposing the dependency ports.
+
 #### Redis readiness verified — 2026-09-30
 The running `wise-support-redis` container passed Redis connectivity validation:
 `PONG` from `redis-cli ping`.
