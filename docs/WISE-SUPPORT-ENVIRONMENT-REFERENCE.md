@@ -240,6 +240,13 @@ The images are downloaded but not yet started. No Chatwoot application state has
 
 
 
+
+#### Redis readiness verified — 2026-09-30
+The running `wise-support-redis` container passed Redis connectivity validation:
+`PONG` from `redis-cli ping`.
+
+PostgreSQL and Redis are therefore both independently running and responding on the OCI validation VM. Chatwoot has not yet been connected to these dependencies.
+
 #### Redis container started — 2026-09-30
 Redis 7 Alpine is now running on the OCI validation VM:
 - Container: `wise-support-redis`
