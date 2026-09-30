@@ -236,6 +236,14 @@ The clean OCI VM had no existing PostgreSQL or Redis/Valkey containers and no li
 
 The images are downloaded but not yet started. No Chatwoot application state has been changed at this stage.
 
+
+#### Persistent dependency volumes — 2026-09-30
+Created the following Docker named volumes on the OCI validation VM:
+- `wise-support-postgres-data`
+- `wise-support-redis-data`
+
+These volumes are intended to keep PostgreSQL and Redis data independent of container lifecycle. The dependency containers have not yet been started.
+
 #### Validation checkpoint
 Current chain proven:
 
