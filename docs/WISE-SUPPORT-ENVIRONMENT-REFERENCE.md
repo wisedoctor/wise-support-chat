@@ -445,3 +445,7 @@ Web startup logs from `wise-support-chat-web` confirm successful production Puma
 - IP lookup setup was skipped because `IP_LOOKUP_API_KEY` is intentionally empty in this validation environment.
 
 This confirms the Rails Web process has reached its listening state. The host binding remains localhost-only (`127.0.0.1:3000`), so public ingress has not yet been enabled.
+
+
+#### Chatwoot Web HTTP health validated — 2026-09-30
+Host-side request to `http://127.0.0.1:3000` returned `HTTP/1.1 302 Found` with location `/installation/onboarding`. This confirms the Rails application is responding through the host's localhost port binding. The redirect is the expected onboarding route for the fresh Chatwoot installation; no public ingress is enabled yet.
