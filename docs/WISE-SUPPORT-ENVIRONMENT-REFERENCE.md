@@ -472,3 +472,14 @@ Observed account state:
 - The first-run onboarding flow is complete
 
 This validates the persistent Web application, database initialization, session/authentication, and browser UI end-to-end. Telegram/channel configuration and the background worker remain separate checkpoints and have not yet been changed.
+
+
+#### Chatwoot Sidekiq worker container started — 2026-09-30
+The persistent worker container `wise-support-chat-worker` is running from the same pinned Chatwoot image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` on `wise-support-net`.
+
+- Container ID: `d6729cfbb5873d3a392cd8bee4a75c2a90583ff2e5c645aaa2e7da6708e64cc4`
+- Status: Up
+- Command: `bundle exec sidekiq -C config/sidekiq.yml`
+- No host port is published; the worker communicates over the private Docker network.
+
+Container status confirms the process remains running. Worker log/queue health is the next checkpoint before channel configuration.
