@@ -368,3 +368,31 @@ Maintenance changes must preserve the higher-level boundaries:
 - provenance/correlation;
 - security/consent;
 - auditable consequential actions.
+
+
+## Current Hosted Validation Update — 2026-09-30
+
+The active hosted validation runtime is now OCI Compute.
+
+OCI validation VM:
+- Instance: wise-support-chat-oci-validation
+- Region: ap-hyderabad-1, AD-1
+- Shape: Intel VM.Standard3.Flex, 1 OCPU / 16 GB RAM
+- OS: Oracle Linux Server 9.8 x86_64
+- Docker Engine: 29.8.1
+- Docker Compose plugin: 5.5.1
+- VCN: wise-support-chat-vcn
+- Subnet: wise-support-chat-public-subnet
+- GHCR image must be the x86_64/linux/amd64 build; the ARM64-only A1 image is not suitable for this VM.
+- OCI Object Storage bucket: oracle-oci-bucket-chatwoot-wisehealth, region ap-hyderabad-1.
+
+### Render validation — paused/archived
+
+Render is no longer the active validation runtime. It is retained as historical/reference infrastructure.
+
+Reasons:
+1. The original source-build Web service exceeded available build memory during Chatwoot dependency compilation.
+2. The image-backed replacement was explored, but fresh-database initialization and process-start/Docker-command behavior did not produce a clean, repeatable deployment.
+3. OCI now provides direct VM-level control for the hosted validation/E2E phase.
+
+Do not treat Render as the current validation or production target unless deliberately reactivated.
