@@ -239,6 +239,20 @@ The images are downloaded but not yet started. No Chatwoot application state has
 
 
 
+
+#### Redis container started — 2026-09-30
+Redis 7 Alpine is now running on the OCI validation VM:
+- Container: `wise-support-redis`
+- Image: `redis:7-alpine`
+- Persistent volume: `wise-support-redis-data`
+- Host binding: `127.0.0.1:6379 -> container 6379`
+- Redis persistence enabled with AOF (`--appendonly yes`)
+- The Redis port is therefore not publicly exposed by the VM.
+
+Current dependency containers shown by `docker ps`:
+- `wise-support-postgres` — PostgreSQL 16, localhost:5432
+- `wise-support-redis` — Redis 7, localhost:6379
+
 #### PostgreSQL readiness verified — 2026-09-30
 The running `wise-support-postgres` container passed PostgreSQL readiness validation:
 `/var/run/postgresql:5432 - accepting connections`.
