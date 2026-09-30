@@ -468,7 +468,7 @@ Observed account state:
 - Account: `1`
 - Chatwoot dashboard rendered successfully
 - No active conversations yet
-- `My Inbox` is present; no channel/inbox has been configured yet
+- `My Inbox` is present; the Telegram channel/inbox has since been configured as part of the dress rehearsal
 - The first-run onboarding flow is complete
 
 This validates the persistent Web application, database initialization, session/authentication, and browser UI end-to-end. Telegram/channel configuration and the background worker remain separate checkpoints and have not yet been changed.
@@ -571,3 +571,17 @@ For each new Chatwoot Telegram bot/channel, the repeatable onboarding procedure 
 9. Record how to repeat the onboarding for a replacement/new bot, including webhook setup/verification and credential rotation.
 
 The current @wise_chatwoot_poc_bot run is therefore intentionally useful as a dress rehearsal of the repeatability of bot onboarding, not merely as a disposable technical test.
+
+
+#### Telegram Chatwoot channel onboarding — dress rehearsal — 2026-09-30
+The first repeatability pass for Chatwoot Telegram channel onboarding was completed using the dedicated temporary bot `@wise_chatwoot_poc_bot`. The Chatwoot UI exposed a four-step flow: Choose Channel → Create Inbox → Add Agents → Voilà.
+
+Observed onboarding sequence:
+1. Choose **Telegram** as the channel/provider.
+2. The Telegram channel setup screen presented a single required **Bot Token** field and a **Create Telegram Channel** action. The UI text explicitly states that the token is obtained from Telegram BotFather.
+3. After submitting the dedicated POC bot token, Chatwoot proceeded to the **Add Agents** step and suggested the currently logged-in superadmin/administrator as the default agent.
+4. Adding that suggested administrator completed the flow and produced the **Your Inbox is ready!** confirmation screen, including a QR code for quickly testing the Telegram inbox and actions for **More settings** and **Take me there**.
+
+No bot credential is recorded here. The credential used for this rehearsal remains separate from the existing `@wescura_support_bot` integration.
+
+This confirms that, for the current Chatwoot build, a new Telegram bot/channel can be onboarded through a short UI flow without manually configuring additional provider fields during the initial channel-creation screen. The next dress-rehearsal checkpoint is to inspect the created inbox/channel metadata and then validate inbound Telegram → Chatwoot → Sidekiq and Chatwoot agent reply → Telegram delivery.
