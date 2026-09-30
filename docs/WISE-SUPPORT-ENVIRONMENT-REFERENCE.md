@@ -390,3 +390,7 @@ The running `wise-support-postgres` database was queried for the required Postgr
 - `vector` — 0.8.6
 
 The previous missing-`vector` migration blocker is therefore resolved at the database runtime level. The next step is to rerun Chatwoot `db:chatwoot_prepare` against this pgvector-backed database.
+
+
+#### Chatwoot pgvector bootstrap retry — 2026-09-30
+The first lines of the post-remediation `db:chatwoot_prepare` retry show the same early production-boot warning/error pattern involving `installation_configs` while the database is still being initialized. The output then continues with `Loading Installation config`. This checkpoint is intentionally recorded as **in progress / not yet classified as a migration failure** until the command reaches its final exit status and output.
