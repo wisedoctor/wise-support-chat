@@ -408,3 +408,9 @@ This confirms that the earlier `installation_configs does not exist` log line wa
 The initialized `chatwoot_production` database was queried directly for all tables in the `public` schema. The result contains 107 tables, including core Chatwoot domains such as `accounts`, `users`, `contacts`, `contact_inboxes`, `inboxes`, `conversations`, `messages`, `attachments`, `teams`, `labels`, `webhooks`, channel-specific tables, Active Storage tables, reporting/automation/SLA tables, Captain/AI tables, and `installation_configs`.
 
 This inventory is retained as the database-side schema checkpoint. Exact one-to-one reconciliation against the migrations/schema embedded in the pinned `sha-a6b2176` application image remains the next verification step; no external generic table-count claim is being treated as authoritative.
+
+
+#### Chatwoot migration-status reconciliation — 2026-09-30
+The exact pinned application image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` was used to inspect Rails migration status against the initialized `chatwoot_production` database. The captured `db:migrate:status` output shows every listed migration as `up`, with no `down` migrations. The migration sequence runs from `20230426130150 Init schema` through the latest listed `20260924000000 Add icon to conversation monitors` migration. The database therefore has no pending migrations according to the exact application image.
+
+Combined with the earlier database-side inventory of 107 public tables and the presence of `installation_configs`, this provides strong environment-level evidence that Chatwoot database preparation completed successfully for the pinned image. The 107-table count is recorded as an observed database result, not as a generic Chatwoot documentation table-count claim.
