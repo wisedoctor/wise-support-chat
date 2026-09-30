@@ -402,3 +402,9 @@ After the pgvector-backed retry of `db:chatwoot_prepare` returned to the shell w
 `installation_configs | 107`
 
 This confirms that the earlier `installation_configs does not exist` log line was an initialization-time lookup during successful database preparation, not the final migration blocker. The previous missing-`vector` blocker is resolved and the Chatwoot schema has been created. Next validation should move to application runtime startup (Web/Sidekiq) rather than rerunning database preparation.
+
+
+#### Chatwoot public-table inventory captured — 2026-09-30
+The initialized `chatwoot_production` database was queried directly for all tables in the `public` schema. The result contains 107 tables, including core Chatwoot domains such as `accounts`, `users`, `contacts`, `contact_inboxes`, `inboxes`, `conversations`, `messages`, `attachments`, `teams`, `labels`, `webhooks`, channel-specific tables, Active Storage tables, reporting/automation/SLA tables, Captain/AI tables, and `installation_configs`.
+
+This inventory is retained as the database-side schema checkpoint. Exact one-to-one reconciliation against the migrations/schema embedded in the pinned `sha-a6b2176` application image remains the next verification step; no external generic table-count claim is being treated as authoritative.
