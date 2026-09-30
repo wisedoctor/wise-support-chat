@@ -226,6 +226,16 @@ The exact image was executed on the OCI VM with a non-persistent smoke-test cont
 
 This establishes that the exact image can be pulled and executed successfully on the OCI Intel/x86_64 VM. It does not yet validate PostgreSQL, Redis/Valkey, Chatwoot migrations, persistent storage, web/worker startup, HTTPS ingress, or Telegram E2E.
 
+
+#### Dependency image pull checkpoint — 2026-09-30
+The clean OCI VM had no existing PostgreSQL or Redis/Valkey containers and no listeners on ports 5432/6379. The dependency images were then pulled successfully:
+- PostgreSQL: `postgres:16-alpine`
+  - Digest: `sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea`
+- Redis: `redis:7-alpine`
+  - Digest: `sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499`
+
+The images are downloaded but not yet started. No Chatwoot application state has been changed at this stage.
+
 #### Validation checkpoint
 Current chain proven:
 
