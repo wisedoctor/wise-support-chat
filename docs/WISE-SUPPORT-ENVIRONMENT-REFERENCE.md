@@ -327,3 +327,36 @@ Reasons for archival:
 3. OCI now provides a directly controllable VM runtime for the hosted validation and E2E work.
 
 Existing Render resources/configuration should be retained only until explicitly decommissioned.
+
+
+#### PostgreSQL extension compatibility checkpoint — 2026-09-30
+The first Chatwoot database-initialization attempt exposed an important migration prerequisite: the generic postgres:16-alpine image does not include the PostgreSQL vector/pgvector extension required by this Chatwoot build.
+
+Observed failure during the exact image's bundle exec rails db:chatwoot_prepare:
+- Rails production boot succeeded after supplying a stable SECRET_KEY_BASE.
+- Chatwoot's database preparation then failed because PostgreSQL could not create/use extension vector.
+- PostgreSQL reported that /usr/local/share/postgresql/extension/vector.control was missing.
+- The current PostgreSQL 16 Alpine container has pg_stat_statements, pg_trgm, pgcrypto, and plpgsql, but not vector.
+- The earlier installation_configs does not exist message occurred while the database was still uninitialized and should not be treated as a separate schema defect at this stage.
+
+This is an environment-migration lesson: database engine/version compatibility is not sufficient; required PostgreSQL extensions must also be present in the actual database runtime image/service before application schema initialization.
+
+##### Preventive migration checklist — PostgreSQL extension dependencies
+For any future migration of Chatwoot or another PostgreSQL-backed WISE service:
+1. Inspect the application schema (db/schema.rb / structure.sql) and migrations for CREATE EXTENSION / extension dependencies before selecting the PostgreSQL image.
+2. Enumerate the required extensions explicitly and compare them with the target PostgreSQL service/image's installed extension set.
+3. Verify extension availability with SELECT name, default_version FROM pg_available_extensions or equivalent before running application migrations.
+4. Prefer an official/known PostgreSQL image that already includes the required extension (for example a pgvector-enabled PostgreSQL image) where appropriate, rather than discovering the dependency during first boot.
+5. If using a managed PostgreSQL service, verify that the required extension is supported and enabled in that service before migration.
+6. Keep database engine version and extension versions as explicit environment prerequisites alongside the application image architecture/runtime requirements.
+7. Perform a disposable schema/bootstrap test against the exact target database image/service before treating the environment as migration-ready.
+8. Preserve the persistent volume while replacing a dependency container only when the database compatibility procedure has been verified; never delete a potentially useful database volume merely to change the container image.
+
+Current remediation status: pending. The existing PostgreSQL data volume is being preserved; no destructive database reset or volume deletion has been performed.
+
+#### Chatwoot database bootstrap prerequisite — 2026-09-30
+The exact Chatwoot image exposes db:chatwoot_prepare, documented by Rails task output as: Runs setup if database does not exist, or runs migrations if it does.
+
+The image's docker/entrypoints/rails.sh does not automatically run database migrations; it waits for PostgreSQL and then executes the supplied process command. Therefore future environment setup procedures must explicitly provision the required PostgreSQL extensions before invoking db:chatwoot_prepare.
+
+The production Rails environment also requires a persistent SECRET_KEY_BASE. The validation setup generated one locally on the OCI VM; secrets must not be recorded in this document or committed to Git.
