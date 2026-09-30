@@ -379,3 +379,14 @@ The PostgreSQL container was recreated successfully from `pgvector/pgvector:pg16
 `/var/run/postgresql:5432 - accepting connections`.
 
 No database reset or volume deletion was performed. The next checkpoint is verification of the `vector` extension in the running database before retrying Chatwoot initialization.
+
+
+#### PostgreSQL extension availability verified — 2026-09-30
+The running `wise-support-postgres` database was queried for the required PostgreSQL extensions before retrying Chatwoot initialization. The target database reports all expected extensions as available:
+- `pg_stat_statements` — 1.10
+- `pg_trgm` — 1.6
+- `pgcrypto` — 1.3
+- `plpgsql` — 1.0
+- `vector` — 0.8.6
+
+The previous missing-`vector` migration blocker is therefore resolved at the database runtime level. The next step is to rerun Chatwoot `db:chatwoot_prepare` against this pgvector-backed database.
