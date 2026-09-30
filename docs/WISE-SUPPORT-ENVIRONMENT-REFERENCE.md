@@ -483,3 +483,9 @@ The persistent worker container `wise-support-chat-worker` is running from the s
 - No host port is published; the worker communicates over the private Docker network.
 
 Container status confirms the process remains running. Worker log/queue health is the next checkpoint before channel configuration.
+
+
+#### Chatwoot Sidekiq worker health validated — 2026-09-30
+Worker logs confirm active Sidekiq job processing, not merely a running container. Observed scheduled jobs being enqueued, performed, and completed successfully, including `ConversationMonitors::DispatchJob`, `Internal::DispatchConversationMonitorsJob`, and `Inboxes::FetchImapEmailInboxesJob`.
+
+This validates the Web + Sidekiq runtime against the initialized PostgreSQL/pgvector and Redis dependency layer. No worker error is present in the supplied log excerpt.
