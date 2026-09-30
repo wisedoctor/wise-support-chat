@@ -394,3 +394,11 @@ The previous missing-`vector` migration blocker is therefore resolved at the dat
 
 #### Chatwoot pgvector bootstrap retry — 2026-09-30
 The first lines of the post-remediation `db:chatwoot_prepare` retry show the same early production-boot warning/error pattern involving `installation_configs` while the database is still being initialized. The output then continues with `Loading Installation config`. This checkpoint is intentionally recorded as **in progress / not yet classified as a migration failure** until the command reaches its final exit status and output.
+
+
+#### Chatwoot database preparation verified — 2026-09-30
+After the pgvector-backed retry of `db:chatwoot_prepare` returned to the shell without a terminal error, the database was inspected directly. The `public.installation_configs` table exists and the database contains 107 public tables:
+
+`installation_configs | 107`
+
+This confirms that the earlier `installation_configs does not exist` log line was an initialization-time lookup during successful database preparation, not the final migration blocker. The previous missing-`vector` blocker is resolved and the Chatwoot schema has been created. Next validation should move to application runtime startup (Web/Sidekiq) rather than rerunning database preparation.
