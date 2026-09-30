@@ -177,3 +177,33 @@ These are environment/runtime choices. The Support module remains channel-neutra
 | Region | Singapore | To be decided per production infrastructure constraints |
 
 This document should be updated when the validation environment is converted into the final production topology.
+
+## Current OCI Validation Update — 2026-09-30
+
+The active hosted validation path is now OCI Compute; Render is paused/archived as a validation path.
+
+### OCI validation environment
+- Runtime: OCI Compute, Hyderabad (`ap-hyderabad-1`), AD-1
+- Instance: `wise-support-chat-oci-validation`
+- Shape: Intel `VM.Standard3.Flex`, 1 OCPU / 16 GB RAM (Linux exposes 2 logical CPUs)
+- OS: Oracle Linux Server 9.8 x86_64
+- Container runtime: Docker Engine 29.8.1; Docker Compose plugin 5.5.1
+- VCN: `wise-support-chat-vcn`
+- Subnet: `wise-support-chat-public-subnet`
+- Current public IP: `140.245.237.47` (validation infrastructure; may change)
+- Image architecture required: `linux/amd64` / x86_64
+- GHCR repository: `ghcr.io/wisedoctor/wise-support-chat`
+- OCI Object Storage remains the S3-compatible attachment-storage option: bucket `oracle-oci-bucket-chatwoot-wisehealth`, region `ap-hyderabad-1`.
+
+This VM is the current validation/E2E environment, not a final production infrastructure decision. The Always Free A1 pool can continue to be retried separately if capacity becomes available.
+
+### Render validation status — paused/archived
+
+Render is no longer the active hosted validation runtime. The Render path is retained as historical/reference infrastructure and should not be treated as the current deployment target.
+
+Reasons for archival:
+1. The original Render source-build Web service exhausted the available build memory while compiling the large Chatwoot dependency tree.
+2. The replacement image-backed validation path was then explored, but fresh-database initialization and process-start/Docker-command behavior did not produce a clean, repeatable Web deployment.
+3. OCI now provides a directly controllable VM runtime for the hosted validation and E2E work.
+
+Existing Render resources/configuration should be retained only until explicitly decommissioned.
