@@ -585,3 +585,16 @@ Observed onboarding sequence:
 No bot credential is recorded here. The credential used for this rehearsal remains separate from the existing `@wescura_support_bot` integration.
 
 This confirms that, for the current Chatwoot build, a new Telegram bot/channel can be onboarded through a short UI flow without manually configuring additional provider fields during the initial channel-creation screen. The next dress-rehearsal checkpoint is to inspect the created inbox/channel metadata and then validate inbound Telegram → Chatwoot → Sidekiq and Chatwoot agent reply → Telegram delivery.
+
+
+#### Telegram inbox configuration inspected — dress rehearsal — 2026-09-30
+The created Telegram inbox `wise_chatwoot_poc_bot` was opened under Chatwoot Settings → Inboxes. The observed Settings screen shows:
+- Inbox name: `wise_chatwoot_poc_bot`
+- Telegram handle displayed: `@wise_chatwoot_poc_bot`
+- Help Center: no Help Center selected
+- Conversation Routing: **Create new conversations** is selected; the UI describes this as creating a new conversation each time after the previous one is resolved. **Reopen same conversation** is available but not selected.
+- Channel greeting: **Enable channel greeting** is currently off.
+- The screen exposes an **Update** action, but no settings were changed during this inspection.
+- Additional tabs visible for the inbox are **Collaborators**, **Business Hours**, **CSAT**, and **Bot Configuration**.
+
+This checkpoint records the actual defaults observed after Telegram channel/inbox creation. The next inspection should focus on the **Bot Configuration** tab before changing any behaviour or performing the live Telegram message test.
