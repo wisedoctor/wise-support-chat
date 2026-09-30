@@ -414,3 +414,11 @@ This inventory is retained as the database-side schema checkpoint. Exact one-to-
 The exact pinned application image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` was used to inspect Rails migration status against the initialized `chatwoot_production` database. The captured `db:migrate:status` output shows every listed migration as `up`, with no `down` migrations. The migration sequence runs from `20230426130150 Init schema` through the latest listed `20260924000000 Add icon to conversation monitors` migration. The database therefore has no pending migrations according to the exact application image.
 
 Combined with the earlier database-side inventory of 107 public tables and the presence of `installation_configs`, this provides strong environment-level evidence that Chatwoot database preparation completed successfully for the pinned image. The 107-table count is recorded as an observed database result, not as a generic Chatwoot documentation table-count claim.
+
+
+#### Redis connectivity verified from exact Chatwoot image — 2026-09-30
+A disposable container using the exact pinned Chatwoot image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` successfully resolved `wise-support-redis` over `wise-support-net` and received `PONG` through the Ruby Redis client.
+
+Result: `REDIS_CHATWOOT_IMAGE_OK=PONG`.
+
+This validates the Chatwoot runtime image → private Docker network → Redis path. The test was disposable and did not modify Chatwoot or Redis state. PostgreSQL, schema/migrations, and Redis connectivity are now independently validated; next step is persistent Chatwoot Web startup.
