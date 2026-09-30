@@ -237,6 +237,19 @@ The clean OCI VM had no existing PostgreSQL or Redis/Valkey containers and no li
 The images are downloaded but not yet started. No Chatwoot application state has been changed at this stage.
 
 
+
+#### PostgreSQL container started — 2026-09-30
+PostgreSQL 16 Alpine is now running on the OCI validation VM:
+- Container: `wise-support-postgres`
+- Image: `postgres:16-alpine`
+- Database: `chatwoot_production`
+- Database user: `chatwoot`
+- Persistent volume: `wise-support-postgres-data`
+- Host binding: `127.0.0.1:5432 -> container 5432`
+- The database port is therefore not publicly exposed by the VM.
+
+Initial `docker ps` verification showed the container `Up` successfully. Database readiness/application connectivity has not yet been separately validated.
+
 #### Persistent dependency volumes — 2026-09-30
 Created the following Docker named volumes on the OCI validation VM:
 - `wise-support-postgres-data`
