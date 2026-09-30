@@ -197,6 +197,42 @@ The active hosted validation path is now OCI Compute; Render is paused/archived 
 
 This VM is the current validation/E2E environment, not a final production infrastructure decision. The Always Free A1 pool can continue to be retried separately if capacity becomes available.
 
+
+### OCI image and runtime validation — 2026-09-30
+
+The OCI VM has now passed image-level and container-runtime smoke validation for the exact Chatwoot image selected for the x86_64 OCI host.
+
+#### GHCR authentication
+- GHCR package: private
+- GitHub repository: public
+- OCI Docker client authenticated to GHCR using a GitHub Personal Access Token (classic) with package-read access.
+- The credential is not stored in Git and must not be recorded in this document.
+
+#### Exact image validated
+- Image: `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176`
+- GitHub Actions build: verified `linux/amd64`
+- OCI host: `linux/amd64`
+- Pulled successfully on OCI
+- Image ID: `sha256:94260b80fcf4f72fab0f1fc91b7ec7ce1a767f3e44af10077b19d9845828544a`
+- RepoDigest: `ghcr.io/wisedoctor/wise-support-chat@sha256:94260b80fcf4f72fab0f1fc91b7ec7ce1a767f3e44af10077b19d9845828544a`
+- The digest matches the previously verified GitHub Actions AMD64 build artifact.
+
+#### Container runtime smoke test
+The exact image was executed on the OCI VM with a non-persistent smoke-test container. The container successfully reported:
+- `IMAGE_SMOKE_OK`
+- `x86_64`
+- Ruby `3.4.4`
+- Rails `7.2.3.1`
+
+This establishes that the exact image can be pulled and executed successfully on the OCI Intel/x86_64 VM. It does not yet validate PostgreSQL, Redis/Valkey, Chatwoot migrations, persistent storage, web/worker startup, HTTPS ingress, or Telegram E2E.
+
+#### Validation checkpoint
+Current chain proven:
+
+OCI x86_64 VM → Docker 29.8.1 → exact GHCR image → linux/amd64 → Ruby 3.4.4 → Rails 7.2.3.1 → successful container execution.
+
+Next validation stage: provision the runtime dependencies (PostgreSQL and Redis/Valkey) and initialize Chatwoot's database before starting the persistent Web/Sidekiq services.
+
 ### Render validation status — paused/archived
 
 Render is no longer the active hosted validation runtime. The Render path is retained as historical/reference infrastructure and should not be treated as the current deployment target.
