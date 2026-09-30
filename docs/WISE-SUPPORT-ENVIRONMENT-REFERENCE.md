@@ -433,3 +433,15 @@ The persistent Web container `wise-support-chat-web` is running from the exact p
 - Network: `wise-support-net`
 
 The service is deliberately localhost-only at this stage; public ingress/HTTPS has not yet been enabled. Next checkpoint is Web application health/log validation before exposing the service.
+
+
+#### Chatwoot Web startup validated — 2026-09-30
+Web startup logs from `wise-support-chat-web` confirm successful production Puma startup using the exact pinned image:
+- Puma 7.2.1
+- Ruby 3.4.4 x86_64
+- Min/max threads: 5/5
+- Environment: production
+- Listening: `http://0.0.0.0:3000` inside the container
+- IP lookup setup was skipped because `IP_LOOKUP_API_KEY` is intentionally empty in this validation environment.
+
+This confirms the Rails Web process has reached its listening state. The host binding remains localhost-only (`127.0.0.1:3000`), so public ingress has not yet been enabled.
