@@ -242,6 +242,14 @@ The images are downloaded but not yet started. No Chatwoot application state has
 
 
 
+
+#### Private dependency network attached — 2026-09-30
+Both dependency containers are now attached to `wise-support-net`:
+- `wise-support-postgres`: `bridge` + `wise-support-net`
+- `wise-support-redis`: `bridge` + `wise-support-net`
+
+Chatwoot can therefore use the container DNS names `wise-support-postgres` and `wise-support-redis` over the private Docker network. The existing localhost host bindings remain unchanged.
+
 #### Private Docker network created — 2026-09-30
 Created the Docker network `wise-support-net` on the OCI validation VM.
 Network ID:
