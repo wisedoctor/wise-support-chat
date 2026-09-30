@@ -489,3 +489,16 @@ Container status confirms the process remains running. Worker log/queue health i
 Worker logs confirm active Sidekiq job processing, not merely a running container. Observed scheduled jobs being enqueued, performed, and completed successfully, including `ConversationMonitors::DispatchJob`, `Internal::DispatchConversationMonitorsJob`, and `Inboxes::FetchImapEmailInboxesJob`.
 
 This validates the Web + Sidekiq runtime against the initialized PostgreSQL/pgvector and Redis dependency layer. No worker error is present in the supplied log excerpt.
+
+
+#### Complete OCI Chatwoot runtime topology validated — 2026-09-30
+All four persistent runtime containers are Up and attached to `wise-support-net`:
+
+| Container | Image | Private IP | Host exposure |
+|---|---|---|---|
+| `wise-support-chat-web` | `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` | 172.18.0.4 | `127.0.0.1:3000 -> 3000` |
+| `wise-support-chat-worker` | same pinned image | 172.18.0.5 | none |
+| `wise-support-postgres` | `pgvector/pgvector:pg16` | 172.18.0.2 | `127.0.0.1:5432 -> 5432` |
+| `wise-support-redis` | `redis:7-alpine` | 172.18.0.3 | `127.0.0.1:6379 -> 6379` |
+
+The private-network topology is validated and the database/Redis services are not publicly exposed. Browser access is currently through the SSH tunnel only.
