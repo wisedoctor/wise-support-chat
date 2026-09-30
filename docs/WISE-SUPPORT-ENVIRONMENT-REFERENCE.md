@@ -360,3 +360,16 @@ The exact Chatwoot image exposes db:chatwoot_prepare, documented by Rails task o
 The image's docker/entrypoints/rails.sh does not automatically run database migrations; it waits for PostgreSQL and then executes the supplied process command. Therefore future environment setup procedures must explicitly provision the required PostgreSQL extensions before invoking db:chatwoot_prepare.
 
 The production Rails environment also requires a persistent SECRET_KEY_BASE. The validation setup generated one locally on the OCI VM; secrets must not be recorded in this document or committed to Git.
+
+#### PostgreSQL pgvector remediation checkpoint — 2026-09-30
+The initial PostgreSQL container (`postgres:16-alpine`) was stopped without deleting its container or persistent volume, preserving the existing database state for safe replacement.
+
+A compatible PostgreSQL image was pulled and verified:
+- Image: `pgvector/pgvector:pg16`
+- Digest: `sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b`
+- PostgreSQL: 16.15
+- Verified pgvector extension control file: `/usr/share/postgresql/16/extension/vector.control`
+
+The extension was verified by inspecting the disposable image directly rather than starting a temporary PostgreSQL server. A previous nested-server test was interrupted after multiple SIGTERM/SIGINT signals; it was disposable and did not use the persistent PostgreSQL volume.
+
+Next remediation step: recreate `wise-support-postgres` from `pgvector/pgvector:pg16` using the existing `wise-support-postgres-data` volume, then verify PostgreSQL readiness and installed extensions before rerunning Chatwoot `db:chatwoot_prepare`.
