@@ -113,3 +113,22 @@ The following remain valid candidates for the eventual production database:
 
 The final choice must be based on ownership, isolation, connectivity, migrations, backup/restore, operational burden and cost—not merely proximity to the runtime.
 
+
+
+## Current Environment Status — 2026-09-30
+
+The active hosted validation environment is now OCI Compute. Render is paused/archived as a validation path.
+
+### Active OCI validation
+- OCI region: Hyderabad (ap-hyderabad-1), AD-1
+- Instance: wise-support-chat-oci-validation
+- Shape: Intel VM.Standard3.Flex, 1 OCPU / 16 GB RAM
+- OS: Oracle Linux Server 9.8 x86_64
+- Docker Engine: 29.8.1; Compose plugin: 5.5.1
+- VCN/subnet: wise-support-chat-vcn / wise-support-chat-public-subnet
+- GHCR: ghcr.io/wisedoctor/wise-support-chat
+- Image architecture: linux/amd64
+- OCI Object Storage: oracle-oci-bucket-chatwoot-wisehealth in ap-hyderabad-1
+
+### Render status
+Render is paused/archived for validation. The source-build service exceeded available build memory; the subsequent image-backed attempt did not achieve a clean repeatable database/process startup path. Render remains historical/reference infrastructure until explicitly decommissioned.
