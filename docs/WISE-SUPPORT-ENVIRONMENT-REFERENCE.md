@@ -243,6 +243,15 @@ The images are downloaded but not yet started. No Chatwoot application state has
 
 
 
+
+#### Chatwoot image → PostgreSQL network connectivity verified — 2026-09-30
+The exact image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` successfully reached PostgreSQL over the private `wise-support-net` Docker network using the container DNS name `wise-support-postgres`.
+
+Result:
+`wise-support-postgres:5432 - accepting connections`
+
+This validates the application-container-to-database network path before any Chatwoot Rails initialization or schema migration is attempted.
+
 #### Private dependency network attached — 2026-09-30
 Both dependency containers are now attached to `wise-support-net`:
 - `wise-support-postgres`: `bridge` + `wise-support-net`
