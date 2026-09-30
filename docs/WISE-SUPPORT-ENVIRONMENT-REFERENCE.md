@@ -373,3 +373,9 @@ A compatible PostgreSQL image was pulled and verified:
 The extension was verified by inspecting the disposable image directly rather than starting a temporary PostgreSQL server. A previous nested-server test was interrupted after multiple SIGTERM/SIGINT signals; it was disposable and did not use the persistent PostgreSQL volume.
 
 Next remediation step: recreate `wise-support-postgres` from `pgvector/pgvector:pg16` using the existing `wise-support-postgres-data` volume, then verify PostgreSQL readiness and installed extensions before rerunning Chatwoot `db:chatwoot_prepare`.
+
+#### pgvector PostgreSQL container recreated — 2026-09-30
+The PostgreSQL container was recreated successfully from `pgvector/pgvector:pg16` using the existing `wise-support-postgres-data` persistent volume and attached to `wise-support-net`. PostgreSQL readiness was then verified successfully:
+`/var/run/postgresql:5432 - accepting connections`.
+
+No database reset or volume deletion was performed. The next checkpoint is verification of the `vector` extension in the running database before retrying Chatwoot initialization.
