@@ -449,3 +449,13 @@ This confirms the Rails Web process has reached its listening state. The host bi
 
 #### Chatwoot Web HTTP health validated — 2026-09-30
 Host-side request to `http://127.0.0.1:3000` returned `HTTP/1.1 302 Found` with location `/installation/onboarding`. This confirms the Rails application is responding through the host's localhost port binding. The redirect is the expected onboarding route for the fresh Chatwoot installation; no public ingress is enabled yet.
+
+
+#### Browser UI validation via SSH tunnel — 2026-09-30
+The OCI Chatwoot Web application was reached successfully from the workstation through an SSH local-forward tunnel using local port 3001:
+
+`localhost:3001 -> SSH -> OCI 127.0.0.1:3000 -> wise-support-chat-web`
+
+The browser rendered the Chatwoot first-run `/installation/onboarding` screen with the setup form (Name, Company Name, Work Email, Password). This validates end-to-end workstation-to-OCI Web UI reachability without exposing Chatwoot publicly.
+
+Local WSL port 3000 remains occupied by the existing local WISE Support/Chatwoot development environment and was deliberately left untouched.
