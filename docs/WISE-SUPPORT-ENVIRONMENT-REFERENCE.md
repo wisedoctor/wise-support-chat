@@ -238,6 +238,13 @@ The images are downloaded but not yet started. No Chatwoot application state has
 
 
 
+
+#### PostgreSQL readiness verified — 2026-09-30
+The running `wise-support-postgres` container passed PostgreSQL readiness validation:
+`/var/run/postgresql:5432 - accepting connections`.
+
+This confirms the PostgreSQL server is accepting connections inside the container. Chatwoot schema/migrations have not yet been initialized.
+
 #### PostgreSQL container started — 2026-09-30
 PostgreSQL 16 Alpine is now running on the OCI validation VM:
 - Container: `wise-support-postgres`
