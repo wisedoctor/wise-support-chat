@@ -422,3 +422,14 @@ A disposable container using the exact pinned Chatwoot image `ghcr.io/wisedoctor
 Result: `REDIS_CHATWOOT_IMAGE_OK=PONG`.
 
 This validates the Chatwoot runtime image → private Docker network → Redis path. The test was disposable and did not modify Chatwoot or Redis state. PostgreSQL, schema/migrations, and Redis connectivity are now independently validated; next step is persistent Chatwoot Web startup.
+
+
+#### Chatwoot Web container started — 2026-09-30
+The persistent Web container `wise-support-chat-web` is running from the exact pinned image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176`.
+
+- Container ID: `d2fcd6aff52c978e304f51ac9bc3d7d82fd4cde93a0a128f71b06e76d8055c27`
+- Status: Up
+- Host binding: `127.0.0.1:3000 -> container 3000`
+- Network: `wise-support-net`
+
+The service is deliberately localhost-only at this stage; public ingress/HTTPS has not yet been enabled. Next checkpoint is Web application health/log validation before exposing the service.
