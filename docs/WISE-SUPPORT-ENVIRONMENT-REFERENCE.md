@@ -459,3 +459,16 @@ The OCI Chatwoot Web application was reached successfully from the workstation t
 The browser rendered the Chatwoot first-run `/installation/onboarding` screen with the setup form (Name, Company Name, Work Email, Password). This validates end-to-end workstation-to-OCI Web UI reachability without exposing Chatwoot publicly.
 
 Local WSL port 3000 remains occupied by the existing local WISE Support/Chatwoot development environment and was deliberately left untouched.
+
+
+#### Chatwoot onboarding and authenticated UI validated — 2026-09-30
+The fresh OCI Chatwoot installation was completed successfully through the SSH tunnel. The browser now reaches `/app/accounts/1/dashboard` and the administrator is authenticated.
+
+Observed account state:
+- Account: `1`
+- Chatwoot dashboard rendered successfully
+- No active conversations yet
+- `My Inbox` is present; no channel/inbox has been configured yet
+- The first-run onboarding flow is complete
+
+This validates the persistent Web application, database initialization, session/authentication, and browser UI end-to-end. Telegram/channel configuration and the background worker remain separate checkpoints and have not yet been changed.
