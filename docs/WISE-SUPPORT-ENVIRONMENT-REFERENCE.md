@@ -502,3 +502,72 @@ All four persistent runtime containers are Up and attached to `wise-support-net`
 | `wise-support-redis` | `redis:7-alpine` | 172.18.0.3 | `127.0.0.1:6379 -> 6379` |
 
 The private-network topology is validated and the database/Redis services are not publicly exposed. Browser access is currently through the SSH tunnel only.
+
+
+## Environment setup completion status — 2026-09-30
+
+### Core OCI validation environment — COMPLETE
+The following environment layers have been provisioned and validated:
+- OCI Compute VM and network topology
+- Docker Engine
+- Exact x86_64 Chatwoot image from GHCR
+- Persistent PostgreSQL + pgvector
+- Persistent Redis with AOF
+- Private Docker network
+- Chatwoot database preparation and migrations
+- Chatwoot Web/Puma startup and HTTP response
+- Browser access through SSH tunnel
+- Chatwoot first-run onboarding and administrator login
+- Persistent Sidekiq worker
+- Sidekiq scheduled-job execution
+- Combined Web/Worker/PostgreSQL/Redis container topology
+
+### Remaining environment/operational setup — NOT YET COMPLETE
+The following are deliberately deferred until the core runtime and Telegram dress rehearsal are validated:
+- Public ingress/reverse proxy
+- Production DNS and TLS/HTTPS
+- OCI firewall/security-list rules for the final ingress path
+- Production-style restart/recovery policy and boot persistence
+- PostgreSQL backup/restore procedure and recovery test
+- OCI Object Storage attachment upload/download E2E validation
+- Production secret-management approach
+- Monitoring/log retention/alerting
+- Telegram webhook/public callback path
+- Final production bot/channel identity
+- Production hardening and capacity configuration
+
+Therefore the core hosted Chatwoot environment setup is complete for the current validation/dress-rehearsal stage, but the environment is not yet being treated as production-ready.
+
+## Support bot / channel onboarding reference
+
+WISE Support channel onboarding must remain separate from infrastructure setup. The bot identity is customer-facing; infrastructure environment names should not leak into that identity.
+
+### Current dress-rehearsal bot
+- Telegram bot: @wise_chatwoot_poc_bot
+- Purpose: temporary integration/dress-rehearsal bot for the Chatwoot Telegram channel
+- Status: approved for the current Ops demo/test run
+- Its poc naming is intentionally temporary and should not be presented as the eventual patient-facing bot identity.
+
+### Existing WISE Support bot — DO NOT MIX
+The existing WISE Support bot @wescura_support_bot is a separate integration and uses its own credential/configuration. It must not be reused as the Chatwoot Telegram channel credential during this dress rehearsal.
+
+### Final patient-facing bot — TBD after Ops demo
+Candidate patient-facing identities discussed for the eventual support entry point:
+- @wise_health_support_bot
+- @wescura_medicines_support_bot
+
+Final selection is intentionally deferred until the Ops demo/handover. The chosen production bot should be documented as a separate channel onboarding record rather than replacing the historical dress-rehearsal bot record.
+
+### Telegram onboarding checklist
+For each new Chatwoot Telegram bot/channel, the repeatable onboarding procedure should capture:
+1. Create/identify the Telegram bot and confirm its intended patient-facing name/handle.
+2. Store the bot credential only in the deployment/Chatwoot secret configuration; never commit or record the token in Git/docs.
+3. In Chatwoot, create the Telegram channel using the dedicated bot credential.
+4. Associate the channel with the intended Chatwoot account/inbox.
+5. Confirm the Telegram webhook/callback reaches the Chatwoot Web endpoint through the final ingress path.
+6. Verify inbound Telegram message → Chatwoot contact/conversation → Sidekiq processing.
+7. Verify Chatwoot agent reply → Telegram delivery.
+8. Record the resulting Chatwoot Account/Inbox/Channel identifiers and non-secret bot metadata in the environment handover.
+9. Record how to repeat the onboarding for a replacement/new bot, including webhook setup/verification and credential rotation.
+
+The current @wise_chatwoot_poc_bot run is therefore intentionally useful as a dress rehearsal of the repeatability of bot onboarding, not merely as a disposable technical test.
