@@ -598,3 +598,88 @@ The created Telegram inbox `wise_chatwoot_poc_bot` was opened under Chatwoot Set
 - Additional tabs visible for the inbox are **Collaborators**, **Business Hours**, **CSAT**, and **Bot Configuration**.
 
 This checkpoint records the actual defaults observed after Telegram channel/inbox creation. The next inspection should focus on the **Bot Configuration** tab before changing any behaviour or performing the live Telegram message test.
+
+
+## Telegram webhook ownership guardrail — 2026-10-01
+
+Telegram permits only one active webhook per bot. Because the same bot may be exercised against local, validation, or production environments at different times, **webhook ownership must be checked immediately before sending test traffic**.
+
+### Mandatory pre-test check
+
+For the intended bot, run:
+
+```bash
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo"
+```
+
+Inspect at minimum:
+- `url`
+- `pending_update_count`
+- `last_error_date`
+- `last_error_message`
+
+Do not send patient/test traffic until the reported `url` matches the environment being tested.
+
+### Set a webhook
+
+Generic form:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -d "url=https://<PUBLIC_HOST>/webhooks/telegram/$TELEGRAM_BOT_TOKEN"
+```
+
+Chatwoot's Telegram channel implementation registers its callback using the Chatwoot `FRONTEND_URL` followed by:
+
+```text
+/webhooks/telegram/<bot_token>
+```
+
+The token must be supplied from the environment/secret store and must never be committed to Git or written into this document.
+
+### Delete a webhook
+
+Use this only when deliberately transferring the bot to polling/fallback or another webhook owner:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/deleteWebhook"
+```
+
+Do not use `deleteWebhook` as an exploratory diagnostic; `getWebhookInfo` is the non-destructive check.
+
+### Current local WISE Support ownership
+
+The existing `@wescura_support_bot` is currently pointed at the local development callback:
+
+```text
+https://thirty-stock-arrogance.ngrok-free.dev/api/webhooks/telegram-support
+```
+
+Therefore, before testing the existing direct WISE Support path, confirm that URL is still registered. Render production will not receive that bot's Telegram traffic while the ngrok URL owns the webhook.
+
+### Current Chatwoot POC ownership
+
+`@wise_chatwoot_poc_bot` is the dedicated Chatwoot dress-rehearsal bot and must remain separate from `@wescura_support_bot`.
+
+For a Chatwoot deployment whose public base URL is `https://<PUBLIC_HOST>`, the Chatwoot Telegram webhook is:
+
+```text
+https://<PUBLIC_HOST>/webhooks/telegram/<POC_BOT_TOKEN>
+```
+
+The current OCI Chatwoot validation instance does **not yet have public HTTPS ingress**, so there is no valid production Chatwoot URL to register for `@wise_chatwoot_poc_bot` yet. Do not point the POC bot at `go.wisehealth.in`; that hostname currently serves the WISE backend, not the OCI Chatwoot Web container.
+
+Once the OCI Chatwoot public ingress/TLS endpoint is established, set the POC bot with:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$CHATWOOT_POC_BOT_TOKEN/setWebhook" \
+  -d "url=https://<PUBLIC_CHATWOOT_HOST>/webhooks/telegram/$CHATWOOT_POC_BOT_TOKEN"
+```
+
+Then immediately verify:
+
+```bash
+curl "https://api.telegram.org/bot$CHATWOOT_POC_BOT_TOKEN/getWebhookInfo"
+```
+
+This check/set/check sequence is the required operational pattern before the live Chatwoot Telegram dress rehearsal.
