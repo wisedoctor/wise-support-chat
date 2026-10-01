@@ -600,6 +600,75 @@ The created Telegram inbox `wise_chatwoot_poc_bot` was opened under Chatwoot Set
 This checkpoint records the actual defaults observed after Telegram channel/inbox creation. The next inspection should focus on the **Bot Configuration** tab before changing any behaviour or performing the live Telegram message test.
 
 
+## Smoke testing / E2E integration validation
+
+### OCI Chatwoot Telegram + auto-assignment E2E — 2026-10-01
+
+The OCI dress rehearsal completed a full Telegram → Chatwoot → Sidekiq → agent-assignment validation using the dedicated temporary Telegram bot `@wise_chatwoot_poc_bot`. This is recorded as an **E2E smoke/integration test**, separate from the core OCI environment-setup completion status.
+
+Validated path:
+
+```text
+Telegram patient message
+  → OCI public HTTPS / Nginx
+  → Chatwoot Telegram webhook
+  → Chatwoot Sidekiq
+  → Contact / Conversation
+  → AutoAssignment::AssignmentJob
+  → configured support agent
+```
+
+The reverse Chatwoot → Telegram reply path had already been validated in the same dress rehearsal.
+
+#### Auto-assignment diagnostic and final validation
+
+The initial Telegram conversation appeared as **Unassigned** even though the Chatwoot UI showed the configured agent as Online. The investigation traced the actual Chatwoot 4.14.2 assignment path:
+
+- Inbox auto-assignment enabled.
+- Account `assignment_v2` feature enabled.
+- User 1 is an Inbox collaborator.
+- Account-scoped availability is `online` (`availability = 0`).
+- Redis round-robin queue contained User 1.
+- Rate limiting was not excluding the agent.
+- `Inbox#available_agents` depends on `OnlineStatusTracker` runtime presence, not only the persisted availability column.
+- The exact Chatwoot image uses a 20-second `PRESENCE_DURATION`.
+- The frontend Action Cable client is configured with a 20-second presence heartbeat.
+- Browser DevTools confirmed the `/cable` connection was active and `RoomChannel` presence messages were being exchanged.
+- A live Redis check showed User 1 present and online when the heartbeat was fresh.
+- When the presence timestamp aged beyond the 20-second server window, `OnlineStatusTracker.get_available_users(1)` returned no users and `inbox.available_agents` became empty.
+- Therefore the observed Unassigned state was caused by the agent's **runtime presence falling outside the 20-second eligibility window**, not by Inbox membership, auto-assignment configuration, Redis round-robin state, or the assignment service itself.
+
+The final controlled assignment test was run while User 1 was demonstrably online:
+
+- Before: Conversation 1 `assignee_id = nil`.
+- Presence: User 1 reported as `online`.
+- `AutoAssignment::AssignmentJob` executed successfully.
+- Chatwoot assigned Conversation 1 to User 1.
+- Assignment/activity and Action Cable events were emitted.
+- After: Conversation 1 `assignee_id = 1`, status remained `open`.
+- The job reported: `Assigned 1 conversations for inbox 1`.
+
+This proves that the **OCI Chatwoot auto-assignment path is functionally working end-to-end when the configured agent has fresh server-side presence**.
+
+#### Presence hardening observation
+
+The current Chatwoot configuration has effectively zero timing margin:
+
+```text
+Client presence heartbeat: 20 seconds
+Server presence validity:   20 seconds
+```
+
+The dress rehearsal therefore exposed a potential operational edge case: browser scheduling, temporary WebSocket/network delay, or similar timing variance can allow the server-side presence record to expire before the next heartbeat arrives.
+
+No change was made to `PRESENCE_DURATION`, `auto_offline`, agent availability, Redis state, or assignment code during this test. This should be treated as a **separate production-hardening decision**, not as a prerequisite for the basic OCI environment setup.
+
+The validated E2E result should therefore be read as:
+
+> Auto-assignment works correctly with fresh agent presence; production hardening should separately establish an appropriate presence/heartbeat safety margin.
+
+
+
 ## Telegram webhook ownership guardrail — 2026-10-01
 
 Telegram permits only one active webhook per bot. Because the same bot may be exercised against local, validation, or production environments at different times, **webhook ownership must be checked immediately before sending test traffic**.
