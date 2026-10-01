@@ -650,6 +650,31 @@ The final controlled assignment test was run while User 1 was demonstrably onlin
 
 This proves that the **OCI Chatwoot auto-assignment path is functionally working end-to-end when the configured agent has fresh server-side presence**.
 
+#### Reverse Chatwoot → Telegram reply E2E — 2026-10-02
+
+The reverse direction was then validated using the same assigned Telegram conversation. The support agent sent a reply from the Chatwoot portal/inbox, and the message was received by the patient-side Telegram client for @wise_chatwoot_poc_bot.
+
+Observed result:
+- Chatwoot conversation remained assigned to the configured support agent.
+- Support-agent reply was visible as an outgoing message in the Chatwoot conversation.
+- The same reply was delivered to the Telegram client.
+- The screenshot captured the corresponding outgoing Chatwoot message and the received Telegram message with matching content/time.
+
+This completes the functional two-way dress-rehearsal path:
+
+```text
+Patient Telegram
+  → Chatwoot Telegram webhook
+  → Chatwoot / Sidekiq
+  → Conversation / AutoAssignment
+  → Support Rep in Chatwoot
+  → Chatwoot outbound Telegram delivery
+  → Patient Telegram
+```
+
+Together with the earlier inbound and assignment validation, this provides functional E2E evidence for both directions of the current OCI Chatwoot Telegram integration. This remains a dress-rehearsal/test-bot validation using @wise_chatwoot_poc_bot; it is not yet the final patient-facing production bot/channel.
+
+
 #### Presence hardening observation
 
 The current Chatwoot configuration has effectively zero timing margin:
