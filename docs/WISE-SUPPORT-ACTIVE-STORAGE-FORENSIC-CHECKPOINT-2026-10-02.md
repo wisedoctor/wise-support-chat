@@ -191,3 +191,56 @@ Required OCI inputs:
 
 Credentials must remain outside Git and should be supplied to the VM only through a temporary secure environment/test mechanism until the final container configuration is agreed.
 
+
+
+## 11. OCI S3-compatible storage probe — PASS
+
+A standalone S3-compatible probe was executed from the live Chatwoot WEB container against the existing OCI bucket.
+
+Inputs used:
+
+- namespace: `ax3kknx0qqfm`
+- region: `ap-hyderabad-1`
+- bucket: `oracle-oci-bucket-chatwoot-wisehealth`
+- endpoint:
+  `https://ax3kknx0qqfm.compat.objectstorage.ap-hyderabad-1.oraclecloud.com`
+- path-style access: enabled
+- OCI Customer Secret Key credentials: supplied transiently to the test process; not stored in Git or documentation.
+
+The probe successfully performed:
+
+```
+LIST bucket       PASS
+PUT object        PASS
+HEAD object       PASS
+GET object        PASS
+DELETE object     PASS
+verify deletion   PASS
+```
+
+The temporary probe object was:
+
+```
+_wise_support_storage_probe_20261002.txt
+```
+
+It was deleted successfully and the subsequent HEAD check confirmed that it no longer exists.
+
+### SDK version check note
+
+The preliminary expression:
+
+```
+Aws::S3::VERSION
+```
+
+raised `NameError`. This was only a version-constant check; it did not indicate that the S3 SDK was unavailable. The subsequent AWS SDK S3 probe loaded and executed successfully, proving the required SDK functionality is available in the deployed Chatwoot runtime.
+
+### Result
+
+The OCI Object Storage layer is independently proven usable from the actual Chatwoot WEB container.
+
+This removes OCI connectivity, credentials, endpoint reachability, and basic S3 object operations as unresolved blockers.
+
+The next validation layer is Rails Active Storage itself, followed by deliberate persistent container configuration.
+
