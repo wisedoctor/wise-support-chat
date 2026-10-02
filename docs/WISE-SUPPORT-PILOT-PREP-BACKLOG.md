@@ -484,3 +484,41 @@ After the above, establish the first controlled operational hand-off for WISE Su
 **Milestone intent:** move from “the technology works in a dress rehearsal” to “a controlled support operation can safely use it and hand work into the appropriate WISE module.”
 
 The RBAC milestone should not prematurely implement the full future context-aware router or fallback engine. Those remain subsequent architecture work.
+
+
+## 16. Attachment/storage remediation checkpoint — 2026-10-02
+
+**Status:** Infrastructure remediation complete; media E2E pending
+
+The Active Storage investigation progressed from diagnosis to a controlled persistent runtime configuration change.
+
+### Completed
+
+- Preserved the three recoverable WEB diagnostic files before container replacement.
+- Preserved the previous WEB and WORKER containers for rollback.
+- Recreated WEB with OCI S3-compatible Active Storage.
+- Verified live WEB Rails `ActiveStorage::Service::S3Service`.
+- Verified live WEB PUT/EXIST/DOWNLOAD/DELETE against OCI Object Storage.
+- Recreated WORKER with the same OCI S3-compatible Active Storage configuration.
+- Verified live WORKER Rails `ActiveStorage::Service::S3Service`.
+- Confirmed Sidekiq resumed normal scheduled/background processing.
+- Left PostgreSQL, Redis, Nginx and Telegram webhook ownership unchanged.
+
+### Still open
+
+The storage infrastructure is now configured, but the pilot attachment gate remains open until actual media delivery is proven:
+
+1. Telegram two-way text regression.
+2. Chatwoot → Telegram document.
+3. Chatwoot → Telegram Rx image.
+4. Patient → Chatwoot image/document.
+
+The earlier outbound .txt and Rx-image failures must not be marked resolved solely because the storage backend changed.
+
+### Rollback retention
+
+Keep the preserved old WEB/WORKER containers until the media regression is complete.
+
+### Security follow-up
+
+The OCI secret key used during diagnostics was exposed during the session. Rotate it after functional validation and update both runtime containers before production use.
