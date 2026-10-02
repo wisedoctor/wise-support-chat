@@ -377,3 +377,54 @@ The pilot should prove **reliable human support first**, while preserving the la
     human resolution
 
 The router and CTA work should make the journey smarter without turning WISE Support into a generic destination or duplicating authoritative domain workflows.
+
+
+---
+
+## 14. Pilot Prep → RBAC / Initial Hand-off Workstream
+
+**Priority:** High  
+**Phase:** Immediate next milestone after current smoke-test closure  
+**Status:** Planned workstream
+
+Once the five immediate pilot-prep investigations below are sufficiently closed, move into the **RBAC + initial hand-off milestone** rather than continuing to expand the dress rehearsal indefinitely.
+
+### Five immediate pilot-prep items
+
+1. **Assignment + Inbox/Conversation behaviour**
+   - establish predictable auto-assignment;
+   - document Inbox vs Conversation vs My Inbox vs Unassigned;
+   - verify new conversation, continuation, resolution and re-entry behaviour.
+
+2. **Attachment/media investigation**
+   - diagnose outbound .txt and Rx-image failures;
+   - establish whether storage, URL accessibility, Telegram adapter, worker, or public HTTPS configuration is involved.
+
+3. **Welcome / /start UX**
+   - verify Telegram constraints;
+   - make first-contact language user-friendly;
+   - use Chatwoot welcome capability now while preserving a provider-neutral future contract.
+
+4. **Context handoff**
+   - define the minimum useful context carried from a WISE entry point into Support;
+   - distinguish already-known context from context the support rep must still ask for.
+
+5. **Production entry-point audit**
+   - inventory current hard-coded destinations and /smart routing;
+   - identify source/intent/context available at each entry point;
+   - preserve current production behaviour until the replacement routing design is explicitly agreed.
+
+### RBAC / initial hand-off milestone
+
+After the above, establish the first controlled operational hand-off for WISE Support:
+
+- define support roles and permissions;
+- distinguish Support Rep, Support/Ops supervisory roles and administrative/platform roles;
+- establish which users can see, claim, assign, reply, resolve, add private notes and administer channels/inboxes;
+- define the boundary between Chatwoot operational permissions and WISE domain permissions;
+- document the minimum audit trail required for support actions;
+- establish the first repeatable Support → WISE operational hand-off without duplicating authoritative domain workflows.
+
+**Milestone intent:** move from “the technology works in a dress rehearsal” to “a controlled support operation can safely use it and hand work into the appropriate WISE module.”
+
+The RBAC milestone should not prematurely implement the full future context-aware router or fallback engine. Those remain subsequent architecture work.
