@@ -750,3 +750,52 @@ Do not alter Telegram webhook ownership during this validation.
 ### Security follow-up
 
 The OCI secret key used during the remediation was exposed during diagnostics. Rotate it after functional validation, then update WEB/WORKER configuration and re-verify storage access. The secret is not recorded in this handover.
+
+
+## 25. Latest media E2E checkpoint — 2026-10-02
+
+The first attachment tests after persistent OCI Active Storage remediation have materially narrowed the problem.
+
+### Proven now
+
+- Chatwoot → Telegram document attachment delivery: **PASS**.
+- Chatwoot → Telegram image attachment delivery: **PASS**.
+
+Therefore the shared OCI Active Storage backend is demonstrably usable for outbound attachment delivery.
+
+### Still failing
+
+**Telegram → Chatwoot document:** message arrives, but the attachment cannot be opened/downloaded.
+
+A direct object request produced OCI `NoSuchKey` for the referenced object key. This proves the requested object was not present at that key when accessed, but does not yet establish where the inbound pipeline lost or mis-keyed the object.
+
+**Telegram → Chatwoot image:** message arrives, but the attachment cannot be downloaded/rendered.
+
+### New duplicate-message finding
+
+The same inbound attachment message is being displayed multiple times. One document test showed three copies of the same inbound message. Refreshing the **Mine** inbox appeared to increase the visible count further; the same pattern was seen for the image test.
+
+Do not clean up records yet. First establish whether the duplication is caused by repeated Telegram update processing, repeated Sidekiq execution, duplicate DB message persistence, API response/pagination behaviour, frontend refresh/render behaviour, or a combination.
+
+### Next exact investigation
+
+Use one fresh inbound document and one fresh inbound image and capture, before/after a single inbox refresh:
+
+1. Telegram `update_id` / webhook evidence.
+2. Rails webhook + Sidekiq logs for that update.
+3. Chatwoot message IDs and timestamps for the resulting copies.
+4. Active Storage blob IDs/keys for the attachment.
+5. OCI object listing/head for the exact blob key.
+6. Browser network response for the conversation/inbox refresh.
+
+The goal is to distinguish **object persistence/keying failure** from **duplicate processing/rendering** before changing code or data.
+
+### Current gate
+
+The attachment gate remains **OPEN**, but its scope has changed:
+
+- outbound media delivery: now proven for document + image;
+- inbound media delivery/retrieval: failing;
+- inbound duplicate-message behaviour: investigation required.
+
+Telegram two-way text remains the regression baseline and must continue to pass during this investigation.
