@@ -1,0 +1,379 @@
+# WISE Support Pilot Prep Backlog
+
+**Status:** Working backlog for Telegram + Chatwoot dress rehearsal and production-entry-point preparation  
+**Updated:** 2026-10-02
+
+This backlog captures the pilot-prep work identified during the OCI-hosted Chatwoot dress rehearsal and the wider WISE context-aware entry-point review.
+
+The current dress rehearsal has proven the core text communication path in both directions. The remaining items below are deliberately separated into **pilot blockers**, **pilot UX/configuration work**, and **future architecture** so that unresolved future design does not hold up the proven core path.
+
+---
+
+## 1. Context-aware WISE entry-point / CTA routing
+
+**Priority:** High  
+**Phase:** Pilot preparation / production entry-point audit  
+**Status:** Architecture direction identified; implementation deferred until entry-point audit
+
+Move beyond hard-coded CTAs such as a fixed Telegram URL or fixed chat endpoint.
+
+The intended model is a **WISE context/intent router** that can use whatever context is already available and choose an appropriate next step:
+
+- self-serve information
+- relevant WISE capability / offer
+- registration or workflow entry
+- existing-request tracking
+- WISE Support
+- other approved ecosystem pathway
+
+Potential context dimensions:
+
+- who: known/new user, patient/caregiver/other role where known
+- what: exploration, medicine request, refill, prescription, consultation, lab, existing request, support
+- where: current WISE ecosystem surface, source page, QR/campaign source, geography/serviceability where available
+- why/when: reason for escalation, existing request, timing/follow-up context where available
+
+**Design principle:** Support is not the universal destination. It is the human-resolution path when self-serve/direct routing is insufficient or when an existing operational issue needs human handling.
+
+**Related historical source:** Wescura Care Pathway Router / WISE Health ecosystem strategy documentation on the wescura-fulfilment-live-architecture branch of quick-chat-landing.
+
+---
+
+## 2. Chatwoot welcome-message capability as a context-capture mechanism
+
+**Priority:** High  
+**Phase:** Pilot UX / future provider-neutral support contract  
+**Status:** Backlog
+
+Use the fact that Chatwoot can configure a channel/inbox welcome message as a deliberate **context-capture and expectation-setting capability**, rather than treating it as cosmetic copy.
+
+Investigate a welcome experience that can:
+
+- explain what WISE Support can help with
+- encourage the user to provide the minimum useful context
+- capture/confirm relevant source context where it is not already known
+- guide the user toward an appropriate first message
+- avoid making the user repeat information that the entry point already knows
+
+Potential context to preserve across the handoff:
+
+- source / entry-point
+- current WISE ecosystem surface
+- location/pincode when relevant and voluntarily supplied
+- medicine/request context
+- existing booking/request reference
+- what the user is trying to accomplish
+
+**Architecture requirement:** Chatwoot's current welcome-message capability is evidence of the required capability, not a permanent dependency on Chatwoot. The eventual WISE Support abstraction should support equivalent channel-specific welcome/onboarding configuration regardless of the underlying support provider.
+
+---
+
+## 3. Telegram /start UX and "bot" terminology
+
+**Priority:** High  
+**Phase:** Pilot UX  
+**Status:** Backlog
+
+The current Telegram experience exposes /start as a technical-looking interaction. Investigate:
+
+1. whether the Telegram/Chatwoot onboarding flow permits avoiding an explicit user-facing /start action;
+2. if not, what can be customized around the action so that it feels like a normal "Start support" interaction rather than a technical bot command;
+3. whether the holding page / CTA should explicitly explain the first Telegram action;
+4. whether the configured welcome message can immediately establish a friendly support expectation after /start.
+
+The user-facing language should avoid unnecessary "bot" terminology where it creates friction.
+
+**Fallback UX requirement:** If Telegram technically requires /start for the first interaction, provide concise guidance next to the CTA/holding-page entry so the action is expected rather than surprising.
+
+Do not assume the technical limitation or solution until verified against the actual Telegram + Chatwoot configuration.
+
+---
+
+## 4. Preserve entry-point context into Support
+
+**Priority:** High  
+**Phase:** Architecture / pilot design  
+**Status:** Backlog
+
+When a user reaches Support from an existing WISE journey, Support should ideally receive the context already known by that journey.
+
+Example:
+
+> User is already on Wescura Medicines, opens Chat, and asks for help.
+
+The support rep should not have to rediscover that the user was already in the medicines journey.
+
+Candidate handoff context:
+
+    source_surface = Wescura Medicines
+    entry_point = portal_chat
+    intent = medicine_request | refill | support | unknown
+    location = known/unknown
+    identity = known/unknown
+    existing_request = known/none
+    context_notes = safe, minimal, non-clinical
+
+This should eventually be provider-neutral and mapped into Chatwoot attributes/custom context where appropriate.
+
+---
+
+## 5. Chatwoot auto-assignment quirk
+
+**Priority:** High  
+**Phase:** Pilot blocker / configuration investigation  
+**Status:** Open
+
+Auto-assignment behaviour remains inconsistent during the dress rehearsal.
+
+Observed states have included:
+
+- Chatwoot receiving a new Telegram conversation successfully;
+- automatic-assignment jobs executing;
+- some conversations appearing under **Unassigned** rather than **My Inbox**;
+- other conversations subsequently appearing assigned to the configured support user.
+
+Investigate the complete assignment path, including:
+
+- account-level agent availability;
+- inbox membership;
+- inbox auto-assignment configuration;
+- assignment policy;
+- conversation creation vs subsequent inbound messages;
+- worker execution and timing;
+- Chatwoot version-specific assignment behaviour.
+
+Do not work around this by manually assigning every conversation. The pilot should establish a predictable support-rep queue behaviour.
+
+---
+
+## 6. Inbox vs Conversation operating model
+
+**Priority:** High  
+**Phase:** Pilot readiness  
+**Status:** Open
+
+Document and verify the operational distinction between:
+
+- **Inbox** — channel/support queue/container;
+- **Conversation** — individual patient/support thread;
+- **My Inbox** — conversations assigned to the current rep;
+- **Unassigned** — conversations received by the inbox but not yet assigned;
+- **All / Participating / Unattended** — Chatwoot conversation views.
+
+Pilot readiness should verify that:
+
+1. a new patient message creates/continues the expected conversation;
+2. the conversation belongs to the correct support inbox;
+3. assignment moves it into the intended rep workflow;
+4. subsequent messages remain in the same conversation when appropriate;
+5. resolved conversations behave correctly when the patient returns;
+6. support reps can reliably distinguish channel/inbox context from individual patient conversations.
+
+This is both a configuration check and an SOP/training item.
+
+---
+
+## 7. Outbound .txt attachment delivery
+
+**Priority:** Pilot blocker  
+**Phase:** Telegram/Chatwoot channel validation  
+**Status:** Open
+
+Plain text messages work in both directions, but an outbound reply containing a simple .txt attachment sent from Chatwoot did **not** reach the Telegram patient.
+
+Chatwoot displayed the outbound message as failed/red.
+
+Investigate:
+
+- Chatwoot attachment upload/storage state;
+- attachment URL generation/accessibility;
+- Telegram media/document API handling;
+- Chatwoot Telegram channel adapter behaviour;
+- OCI/Nginx/public HTTPS implications;
+- worker logs and Telegram API response;
+- whether attachment storage configuration is complete.
+
+Do not mark attachment support complete until delivery is verified end-to-end.
+
+---
+
+## 8. Outbound prescription-image delivery
+
+**Priority:** Pilot blocker  
+**Phase:** Telegram/Chatwoot channel validation  
+**Status:** Open
+
+A support reply containing a prescription-sheet image/photo also did **not** reach the Telegram patient and showed the same failed/red behaviour.
+
+Treat this as a potentially broader **attachment/media handling** issue rather than an isolated image problem.
+
+Validate at least:
+
+- JPG/JPEG/PNG image;
+- document/PDF if supported;
+- simple text/document attachment;
+- patient → Chatwoot inbound attachment;
+- Chatwoot → Telegram outbound attachment.
+
+The Rx-image path is particularly important because prescription/support workflows are expected to use image/document exchange.
+
+---
+
+## 9. General attachment capability gate
+
+**Priority:** Pilot blocker  
+**Phase:** Pilot readiness  
+**Status:** Open
+
+Before the Telegram + Chatwoot path is considered pilot-ready, establish an explicit attachment capability matrix:
+
+| Direction | Text | Image/Rx | Document | Result |
+|---|---|---|---|---|
+| Patient → Chatwoot | proven | to verify | to verify | open |
+| Chatwoot → Patient | proven | failing | failing | blocker |
+
+Do not assume the failure is caused by one specific configuration component until logs/source behaviour are inspected.
+
+---
+
+## 10. Two-way text communication — completed baseline
+
+**Priority:** Reference / regression test  
+**Status:** Proven
+
+The following happy path is now demonstrated:
+
+    Patient Telegram
+        ↓
+    Telegram webhook
+        ↓
+    OCI Nginx / HTTPS
+        ↓
+    Chatwoot Telegram channel
+        ↓
+    Chatwoot / Sidekiq
+        ↓
+    Support conversation
+        ↓
+    Support rep reply
+        ↓
+    Chatwoot / Telegram adapter
+        ↓
+    Patient Telegram
+
+The text-only path should become a regression test while attachment and routing work continues.
+
+---
+
+## 11. Pilot entry-point rehearsal matrix
+
+**Priority:** High  
+**Phase:** Pilot preparation  
+**Status:** Backlog
+
+Rehearse the same Support capability from multiple WISE entry points:
+
+- holding-page CTA;
+- QR code;
+- Wescura Medicines page;
+- future WISE Health portal chat widget;
+- WISE Doctor entry point;
+- existing-request/status context;
+- future campaign/deep-link entry points.
+
+For each, record:
+
+- entry source;
+- context available at entry;
+- destination selected;
+- welcome/onboarding experience;
+- identity/context carried into Support;
+- support-rep experience;
+- fallback behaviour.
+
+This becomes the practical validation of the context-aware router concept.
+
+---
+
+## 12. Production entry-point audit
+
+**Priority:** High  
+**Phase:** Current workstream  
+**Status:** Next planned work
+
+Inventory current production entry points and hard-coded destinations before migrating production code.
+
+For each entry point determine:
+
+- current destination;
+- intended audience/intent;
+- available context;
+- current self-serve option;
+- Support fallback;
+- future smart-routing opportunity;
+- whether the current destination should remain unchanged during pilot.
+
+**Guardrail:** Do not replace existing production destinations merely because a smarter architecture is available. First audit, then design the transition, then implement deliberately.
+
+---
+
+## 13. Final patient-facing Telegram bot identity
+
+**Priority:** Medium  
+**Phase:** Production hardening  
+**Status:** Deferred
+
+The current @wise_chatwoot_poc_bot remains the dress-rehearsal bot.
+
+Final patient-facing bot identity is to be selected after the pilot/entry-point review. Candidate identities previously discussed include @wise_health_support_bot and @wescura_medicines_support_bot.
+
+Keep credentials, webhook ownership, onboarding and documentation strictly separated from the existing @wescura_support_bot path.
+
+---
+
+## Pilot-prep sequencing
+
+### Complete / baseline
+- OCI Chatwoot environment operational.
+- Telegram → Chatwoot inbound text.
+- Chatwoot → Telegram outbound text.
+- Support conversation creation.
+- Support-rep reply flow.
+- POC CTA rehearsal from a second Android device.
+
+### Next pilot-prep work
+1. Resolve/understand assignment and inbox/conversation operating behaviour.
+2. Investigate attachment/media failures.
+3. Establish the pilot attachment capability gate.
+4. Capture welcome-message and /start UX requirements.
+5. Rehearse multiple entry points and context handoff.
+6. Complete production entry-point audit.
+7. Only then decide production code migration and final patient-facing routing changes.
+
+### Deferred architecture
+- Context-aware WISE intent router implementation.
+- Provider-neutral welcome/onboarding contract.
+- Provider-neutral support context contract.
+- Chatwoot replacement/fallback engine implementation.
+- Final production Telegram bot identity.
+- Broader WISE ecosystem routing beyond currently live capabilities.
+
+---
+
+## Pilot readiness principle
+
+The pilot should prove **reliable human support first**, while preserving the larger WISE vision:
+
+    discover / explore
+          ↓
+    self-serve where possible
+          ↓
+    clear intent → relevant WISE capability
+          ↓
+    unclear / blocked / operational issue
+          ↓
+    context-aware Support
+          ↓
+    human resolution
+
+The router and CTA work should make the journey smarter without turning WISE Support into a generic destination or duplicating authoritative domain workflows.
