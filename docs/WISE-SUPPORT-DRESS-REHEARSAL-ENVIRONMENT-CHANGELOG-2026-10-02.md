@@ -6,7 +6,8 @@
 
 **Status:** Dress rehearsal / pilot-prep environment. Not a production hardening record.
 
-**Updated:** 2026-10-02
+**Updated:** 2026-10-02  
+**Latest checkpoint:** WISE Health Website Support Inbox configured; native `/support` integration next
 
 ---
 
@@ -1064,6 +1065,58 @@ The following are deliberately temporary or validation-specific:
 | Welcome message configuration | Rehearsal capability; final copy/process TBD |
 | Current public OCI IP | May change |
 | Direct IP browser access with certificate warning | Historical validation-only |
+
+---
+
+# 37. WISE Health Website Support Inbox created
+
+A second Chatwoot channel has now been configured for the next native WISE Health web-support slice.
+
+Configured Website Inbox:
+
+- **Inbox name:** `WISE Health™ Support`
+- **Website domain:** `https://wisehealth.in`
+- **Welcome heading:** `WISE Health™ Support`
+- **Welcome message:** configured for WISE Health care/support context
+- **Sender mode:** Friendly
+- **Sender identity:** WISE Health
+- **Collaborators:** configured
+- **Widget preview:** verified in Chatwoot
+- **Launcher:** enabled/configured
+- **Conversation/greeting settings:** configured for the pilot
+
+The Chatwoot Website Inbox has generated its own website token and installation script.
+
+### Credential handling
+
+The website token is a secret and is **not recorded in this document, Git, screenshots, or chat context**.
+
+The generated Chatwoot script is treated as provider-specific implementation detail. The token should be supplied only through the appropriate runtime/environment configuration when the web integration is implemented.
+
+### Architecture boundary
+
+The native WISE Health `/support` page belongs to the core `quick-chat-landing` application.
+
+The Chatwoot-specific Website Inbox configuration and provider implementation remain owned by:
+
+`wisedoctor/wise-support-chat`
+
+The core application should not absorb a broad Chatwoot integration or duplicate Chatwoot configuration.
+
+### Current status
+
+The Website Inbox configuration is complete enough to begin the **native WISE Health `/support` integration**.
+
+What is **not yet proven**:
+
+- `wisehealth.in/support` native page;
+- browser → Chatwoot Website Inbox;
+- web conversation → configured Support Rep;
+- Support Rep → browser reply;
+- conversation persistence/re-entry;
+- assignment behaviour for Website conversations.
+
+These become the next web-support validation slice.
 
 ---
 
