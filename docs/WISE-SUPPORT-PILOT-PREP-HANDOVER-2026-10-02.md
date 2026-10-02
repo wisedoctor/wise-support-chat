@@ -612,3 +612,70 @@ preserve/correlate existing files → establish persistent shared storage → mo
 
 The dedicated smoke-test record is:
 docs/WISE-SUPPORT-E2E-SMOKE-TEST-2026-10-02.md
+
+
+## 23. Active Storage OCI remediation checkpoint — 2026-10-02
+
+The storage investigation has now reached a clean technical checkpoint.
+
+### Proven independently
+
+1. Existing OCI bucket is empty and available as the selected persistent-storage candidate.
+2. S3-compatible access from the actual Chatwoot WEB container passed LIST/PUT/HEAD/GET/DELETE.
+3. Rails Active Storage itself successfully used `ActiveStorage::Service::S3Service` against the OCI bucket.
+4. AWS SDK S3 version in the deployed image is `1.208.0`.
+5. Temporary probe objects were deleted and the bucket was left empty.
+
+### Current live runtime remains unchanged
+
+The persistent WEB and WORKER containers have **not yet been switched** from local DiskService to S3-compatible storage.
+
+Therefore:
+
+- current text E2E remains the baseline;
+- Telegram webhook ownership remains unchanged;
+- PostgreSQL/Redis remain unchanged;
+- Nginx/TLS remains unchanged;
+- no production-facing bot has been touched.
+
+### Next exact step
+
+Before the persistent storage change, capture the exact current container creation configuration for WEB and WORKER, including:
+
+- image;
+- environment variables (redacting secrets);
+- network;
+- port mapping;
+- command;
+- restart policy;
+- dependencies/links;
+- existing PostgreSQL/Redis hostnames;
+- existing SECRET_KEY_BASE handling.
+
+Then recreate only WEB and WORKER with the same configuration plus:
+
+```
+ACTIVE_STORAGE_SERVICE=s3_compatible
+STORAGE_ACCESS_KEY_ID=<OCI access key>
+STORAGE_SECRET_ACCESS_KEY=<OCI secret key>
+STORAGE_REGION=ap-hyderabad-1
+STORAGE_BUCKET_NAME=oracle-oci-bucket-chatwoot-wisehealth
+STORAGE_ENDPOINT=https://ax3kknx0qqfm.compat.objectstorage.ap-hyderabad-1.oraclecloud.com
+STORAGE_FORCE_PATH_STYLE=true
+```
+
+The secret values must never enter Git, documentation or chat.
+
+After recreation, verify both WEB and WORKER report `ActiveStorage::Service::S3Service` before testing attachments.
+
+### Required regression order
+
+1. Container health / Chatwoot portal.
+2. Rails Active Storage service class in WEB + WORKER.
+3. Fresh Chatwoot attachment upload/read.
+4. Telegram two-way text regression.
+5. Document attachment E2E.
+6. Rx-image attachment E2E.
+7. Patient → Chatwoot attachment validation.
+
+Do not change Telegram webhook configuration as part of this storage remediation.
