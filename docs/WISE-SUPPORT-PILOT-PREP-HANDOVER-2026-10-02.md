@@ -217,8 +217,7 @@ Most important finding:
 
       inbox_members
         .joins(:user)
-        .where(users: { id: online_agent_ids })
-        .includes(:user)
+        .where(users: { id: online_agent_ids })        .includes(:user)
     end
 
 and:
@@ -498,135 +497,30 @@ Prove the first controlled:
           ↓
     audited outcome
 
-The hand-off should **not duplicate domain workflows inside Support**.
-
-Example principle already discussed:
-A support rep may create a medicine request on behalf of a patient, but that request should enter the normal WISE/Ops request lifecycle rather than becoming a separate Chatwoot-only workflow.
-
-This is the milestone that moves the project from:
-
-> "technology works"
-
-to:
-
-> "a controlled support operation can use it and hand work into WISE correctly."
 
 ---
 
-## 15. Five immediate pilot-prep workstreams
+## 20. Latest verified stable-hostname checkpoint
 
-These are the immediate workstreams to close before RBAC / initial hand-off:
+The stable HTTPS migration is now complete for the Telegram POC rehearsal.
 
-### Workstream A — Assignment + Inbox/Conversation
-- resolve auto-assignment behaviour;
-- cleanly test new conversations;
-- document Inbox vs Conversation vs My Inbox vs Unassigned;
-- verify resolve/re-entry behaviour.
+Verified:
 
-### Workstream B — Attachments / Media
-- debug .txt failure;
-- debug Rx image failure;
-- verify storage/public URL path;
-- establish attachment capability gate.
+- `support.wisehealth.in` resolves to the OCI validation IP `140.245.237.47`;
+- trusted Let's Encrypt TLS is active;
+- the Chatwoot support-rep portal is reachable at `https://support.wisehealth.in`;
+- the POC bot `@wise_chatwoot_poc_bot` webhook is now:
+  `https://support.wisehealth.in/webhooks/telegram/<bot-token>`;
+- Telegram reports `has_custom_certificate: false`;
+- Telegram reports `pending_update_count: 0`;
+- two-way Telegram ↔ Chatwoot text E2E was rerun after the hostname migration and passed.
 
-### Workstream C — Welcome / /start UX
-- verify Telegram constraints;
-- refine first-contact wording;
-- configure/test welcome message;
-- document the eventual provider-neutral capability.
+Operationally, this removes the cryptic raw-IP URL from the support-rep portal and establishes the stable hostname as the rehearsal's public support ingress.
 
-### Workstream D — Context handoff
-- define minimum support context;
-- distinguish source/identity/intent/location/existing-request context;
-- determine what can be passed automatically vs asked by rep.
+The raw IP remains an underlying validation-environment address only. It must not be treated as a patient-facing URL or permanent production infrastructure identity.
 
-### Workstream E — Production entry-point audit
-- audit /smart;
-- audit current CTAs;
-- audit QR;
-- audit Medicines;
-- audit future web-chat entry;
-- audit WISE Doctor / wider WISE Health routes;
-- map hard-coded destinations to future smart-routing opportunities.
+Related environment log update:
 
-**Exit condition:** enough evidence/design clarity to proceed to RBAC and the initial Support → WISE operational hand-off.
+- `docs/WISE-SUPPORT-DRESS-REHEARSAL-ENVIRONMENT-CHANGELOG-2026-10-02.md`
+- commit: `f2ef66c5f7bcf30658ec9f355480e3b4aca2d0e4`
 
----
-
-## 16. Existing documentation
-
-Key files in wise-support-chat/docs:
-
-- WISE-SUPPORT-ENVIRONMENT-REFERENCE.md
-- WISE-SUPPORT-ENVIRONMENT-MATRIX.md
-- WISE-SUPPORT-CHATWOOT-TELEGRAM-FALLBACK-ARCHITECTURE.md
-- WISE-SUPPORT-PRODUCTION-MAINTENANCE.md
-- WISE_SUPPORT_CURRENT_ENVIRONMENT_AND_MAINTENANCE_RUNBOOK.md
-- WISE-SUPPORT-PILOT-PREP-BACKLOG.md — current active backlog
-
-The fallback architecture is intentionally deferred until the current pilot/RBAC work matures.
-
----
-
-## 17. Documentation rule for next session
-
-Continue updating the running environment/reference documentation when environment state changes.
-
-Keep **environment setup** separate from **smoke testing / E2E integration evidence**.
-
-Pilot findings such as:
-- assignment behaviour;
-- attachment failures;
-- welcome-message observations;
-- entry-point rehearsals;
-- successful text E2E;
-
-belong in the pilot/E2E evidence or pilot backlog, not as environment setup facts unless they materially change infrastructure state.
-
----
-
-## 18. Security reminders
-
-- Never paste Telegram bot tokens into chat or documentation.
-- Rotate the exposed POC token before production use.
-- Never expose the OCI private TLS key.
-- Temporary self-signed IP certificate is validation-only.
-- Production HTTPS/TLS, DNS, secrets, firewall hardening, backups, object storage, monitoring and recovery remain outstanding before production readiness.
-
----
-
-## 19. Exact continuation instructions for a new ChatGPT session
-
-Start by reading this handover and the active backlog.
-
-Then continue with the **next unresolved item in the five-workstream sequence**, not by rebuilding the environment.
-
-Preferred working style:
-
-1. verify current state before changing anything;
-2. use exact source/code/log evidence rather than guessing;
-3. one risky operational change at a time;
-4. preserve successful text E2E;
-5. do not mix the two Telegram bots;
-6. do not make production changes until the production entry-point audit is complete;
-7. update the running documentation after meaningful checkpoints;
-8. once the five immediate workstreams are sufficiently closed, move to **RBAC + initial hand-off**.
-
-### Seed prompt
-
-Continue the WISE Support pilot-prep work from the handover document WISE-SUPPORT-PILOT-PREP-HANDOVER-2026-10-02.md and the active backlog WISE-SUPPORT-PILOT-PREP-BACKLOG.md in wisedoctor/wise-support-chat on develop.
-
-The OCI-hosted Chatwoot v4.14.2 dress rehearsal is operational and two-way Telegram text communication is proven. Do not rebuild the environment or redo the completed E2E work.
-
-Work through these five immediate pilot-prep workstreams:
-1. assignment + Inbox/Conversation behaviour;
-2. attachment/media failures;
-3. welcome-message + Telegram /start UX;
-4. context handoff;
-5. production entry-point audit.
-
-Once sufficiently closed, proceed to the RBAC + initial operational hand-off milestone.
-
-Preserve the larger WISE vision: context-aware routing should choose self-serve/relevant WISE capability where possible and route unclear/blocked/operational issues to human Support with whatever context is already known. Do not prematurely implement the full smart router or fallback engine.
-
-Be precise, evidence-driven, incremental, and keep updating the documentation after meaningful checkpoints.
