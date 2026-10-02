@@ -589,3 +589,26 @@ Related environment log update:
 - `docs/WISE-SUPPORT-DRESS-REHEARSAL-ENVIRONMENT-CHANGELOG-2026-10-02.md`
 - commit: `f2ef66c5f7bcf30658ec9f355480e3b4aca2d0e4`
 
+
+
+## 22. Latest attachment/storage checkpoint — 2026-10-02
+
+Before making any Active Storage change, the rehearsal state was captured.
+
+- WEB container Mounts: []
+- WORKER container Mounts: []
+- WEB /app/storage contains only three 8-byte objects from recent patient_guidance_test_doc.txt uploads.
+- WORKER contains no corresponding storage files.
+- The three current WEB objects are identical test payloads.
+- PostgreSQL contains additional blob metadata not fully represented in the current WEB filesystem.
+- Rails has already produced ActiveStorage::FileNotFoundError for a DB-referenced blob.
+
+Therefore attachment/media is now understood as both a storage-sharing problem and an existing DB/filesystem consistency problem.
+
+Do not recreate containers or mount an empty shared volume over /app/storage yet.
+
+Next safe sequence:
+preserve/correlate existing files → establish persistent shared storage → mount into WEB + WORKER → verify → rerun media E2E.
+
+The dedicated smoke-test record is:
+docs/WISE-SUPPORT-E2E-SMOKE-TEST-2026-10-02.md
