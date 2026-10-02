@@ -141,3 +141,40 @@ Website browser E2E: OPEN
 RBAC: NEXT OPERATIONAL MILESTONE after pilot-prep closure
 
 This is a point-in-time smoke-test record. Current infrastructure details should be cross-checked against the environment reference and dress-rehearsal changelog.
+
+
+## Active Storage remediation checkpoint — 2026-10-02
+
+The storage infrastructure remediation has now progressed from diagnosis to persistent runtime configuration.
+
+### PASS
+
+- Recoverable WEB local storage files preserved before replacement.
+- Previous WEB and WORKER containers preserved for rollback.
+- Replacement WEB running successfully with `ActiveStorage::Service::S3Service`.
+- Live WEB Rails Active Storage PUT/EXIST/DOWNLOAD/DELETE probe passed.
+- Replacement WORKER running successfully with `ActiveStorage::Service::S3Service`.
+- WORKER Sidekiq scheduled/background processing resumed normally.
+- PostgreSQL, Redis, Nginx, Telegram webhook ownership and bot identities were not changed by the storage remediation.
+
+### Still open
+
+The infrastructure change is **not itself an attachment E2E result**. The following remain to be tested:
+
+| Direction | Text | Image/Rx | Document |
+|---|---|---|---|
+| Patient → Chatwoot | regression | verify | verify |
+| Chatwoot → Patient | regression | pending | pending |
+
+The user will provide the actual media-test results separately. Until then, attachment/media remains OPEN.
+
+### Rollback retention
+
+Keep these preserved containers until media regression is complete:
+
+- `wise-support-chat-web-disk-20261002`
+- `wise-support-chat-worker-disk-20261002`
+
+### Security follow-up
+
+The OCI secret key used during diagnostics must be rotated before production use; no secret is recorded in this document.
