@@ -244,3 +244,74 @@ This removes OCI connectivity, credentials, endpoint reachability, and basic S3 
 
 The next validation layer is Rails Active Storage itself, followed by deliberate persistent container configuration.
 
+
+
+## 12. Rails Active Storage → OCI S3 probe — PASS
+
+A second, Rails-level probe was executed from the live Chatwoot WEB container with the OCI S3-compatible configuration supplied transiently through environment variables.
+
+Observed configuration:
+
+- `ACTIVE_STORAGE_SERVICE=s3_compatible`
+- service class: `ActiveStorage::Service::S3Service`
+- `aws-sdk-s3`: `1.208.0`
+- region: `ap-hyderabad-1`
+- bucket: `oracle-oci-bucket-chatwoot-wisehealth`
+- path-style access: enabled
+
+The probe successfully performed through Rails Active Storage itself:
+
+```
+PUT       PASS
+EXIST     PASS
+DOWNLOAD  PASS
+DELETE    PASS
+VERIFY DELETE PASS
+```
+
+Temporary object:
+
+```
+_wise_support_active_storage_probe_20261002
+```
+
+The object was deleted and deletion was verified.
+
+### Result
+
+The complete storage chain is now independently proven from the actual Chatwoot runtime:
+
+```
+Rails Active Storage
+        ↓
+S3Service
+        ↓
+AWS SDK S3 1.208.0
+        ↓
+OCI S3 Compatibility API
+        ↓
+oracle-oci-bucket-chatwoot-wisehealth
+```
+
+Therefore OCI storage connectivity, credentials, endpoint configuration and Rails Active Storage S3 integration are no longer unknowns.
+
+### Important distinction
+
+This probe did **not** change the running Chatwoot containers' persistent configuration. It injected the S3-compatible settings only into the probe process.
+
+The live Web/Worker containers therefore remain on their original DiskService configuration until the deliberate remediation step.
+
+## 13. Next remediation step
+
+The next step is now the controlled persistent configuration change:
+
+1. preserve the currently recoverable local files;
+2. capture the current WEB and WORKER container environment/configuration needed to recreate them faithfully;
+3. configure `ACTIVE_STORAGE_SERVICE=s3_compatible` and the OCI storage variables identically for WEB and WORKER;
+4. recreate/restart the containers without changing PostgreSQL, Redis, Telegram webhook ownership or Nginx;
+5. verify Rails reports `S3Service` in both containers;
+6. create a fresh attachment through Chatwoot and verify WEB + WORKER access;
+7. rerun the Telegram text regression;
+8. rerun document/image attachment E2E.
+
+No storage configuration change should be made until the current container creation parameters are captured so that the existing rehearsal topology can be reproduced safely.
