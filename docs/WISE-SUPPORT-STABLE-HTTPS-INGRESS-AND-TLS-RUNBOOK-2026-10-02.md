@@ -245,7 +245,7 @@ sudo mkdir -p /usr/share/nginx/html/.well-known/acme-challenge
 echo "wise-support-acme-test" | sudo tee /usr/share/nginx/html/.well-known/acme-challenge/test.txt
 ```
 
-### Verify locally/external reachability
+### Verify local/external reachability
 
 The test file must be reachable through the public hostname:
 
@@ -279,10 +279,13 @@ Successful issuance produced:
 /etc/letsencrypt/live/support.wisehealth.in/privkey.pem
 ```
 
-The certificate was successfully issued and the observed expiry date was:
+The certificate was successfully issued. At activation verification on 2026-10-02, the served certificate reported:
 
 ```
-2026-12-31
+subject=CN=support.wisehealth.in
+issuer=C=US, O=Let's Encrypt, CN=YE1
+notBefore=Oct  2 08:04:48 2026 GMT
+notAfter=Dec 31 08:04:47 2026 GMT
 ```
 
 The exact expiry should always be checked from the current certificate rather than copied from this historical record.
@@ -407,45 +410,69 @@ That minimizes disruption to the Chatwoot validation service.
 
 ---
 
-## 10. Current TLS migration boundary
+## 10. TLS activation — completed 2026-10-02
 
-The Let's Encrypt certificate has been issued, but issuance and activation are separate steps.
+The trusted certificate was activated in the live Nginx Chatwoot server block.
 
-The **old temporary TLS configuration** was:
+### Previous temporary configuration
 
-```text
-/etc/nginx/ssl/chatwoot-ip.crt
-/etc/nginx/ssl/chatwoot-ip.key
+```nginx
+server {
+    listen 443 ssl;
+    server_name 140.245.237.47;
+
+    ssl_certificate     /etc/nginx/ssl/chatwoot-ip.crt;
+    ssl_certificate_key /etc/nginx/ssl/chatwoot-ip.key;
 ```
 
-The intended trusted TLS configuration is:
+### Activated configuration
 
-```text
-/etc/letsencrypt/live/support.wisehealth.in/fullchain.pem
-/etc/letsencrypt/live/support.wisehealth.in/privkey.pem
+```nginx
+server {
+    listen 443 ssl;
+    server_name support.wisehealth.in;
+
+    ssl_certificate     /etc/letsencrypt/live/support.wisehealth.in/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/support.wisehealth.in/privkey.pem;
 ```
 
-Before changing `/etc/nginx/conf.d/chatwoot.conf`:
+The existing Chatwoot reverse-proxy `location /` and `proxy_pass http://127.0.0.1:3000` configuration was preserved unchanged.
 
-1. Back up the current configuration.
-2. Inspect the current server block.
-3. Change only the `ssl_certificate` and `ssl_certificate_key` paths and hostname/server-name requirements necessary for the stable hostname.
-4. Run:
-   ```bash
-   sudo /usr/sbin/nginx -t
-   ```
-5. Reload:
-   ```bash
-   sudo systemctl reload nginx
-   ```
-6. Verify:
-   ```bash
-   curl -I https://support.wisehealth.in/
-   ```
-7. Verify the served certificate is for `support.wisehealth.in` and is publicly trusted.
-8. Only after successful HTTPS verification should patient-facing CTAs be changed.
+A backup was created before editing:
 
-**Do not delete the old self-signed certificate until the trusted hostname path has been proven.**
+```text
+/etc/nginx/conf.d/chatwoot.conf.bak-20261002
+```
+
+Validation before reload succeeded:
+
+```text
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+```
+
+Nginx was then gracefully reloaded.
+
+### Live HTTPS verification
+
+```text
+HTTP/1.1 200 OK
+Server: nginx/1.20.1
+Content-Type: text/html; charset=utf-8
+```
+
+The served certificate was verified directly with SNI:
+
+```text
+subject=CN=support.wisehealth.in
+issuer=C=US, O=Let's Encrypt, CN=YE1
+notBefore=Oct  2 08:04:48 2026 GMT
+notAfter=Dec 31 08:04:47 2026 GMT
+```
+
+**Checkpoint status: TRUSTED HTTPS ACTIVATION PROVEN.**
+
+The temporary self-signed IP certificate is no longer the active Nginx certificate. It is retained as a historical/rollback artifact and should not be deleted until the subsequent hostname/Telegram regression checkpoint is complete.
 
 ---
 
@@ -474,18 +501,20 @@ Before changing `/etc/nginx/conf.d/chatwoot.conf`:
 
 ### HTTPS activation
 
-- [ ] Nginx switched from IP/self-signed certificate to Let's Encrypt certificate.
-- [ ] `nginx -t` passes.
-- [ ] Nginx reload succeeds.
-- [ ] `https://support.wisehealth.in/` serves trusted certificate.
-- [ ] Browser verification succeeds without certificate warning.
+- [x] Nginx switched from IP/self-signed certificate to Let's Encrypt certificate.
+- [x] `nginx -t` passes.
+- [x] Nginx reload succeeds.
+- [x] `https://support.wisehealth.in/` serves HTTP 200 through Chatwoot.
+- [x] Served certificate subject is `support.wisehealth.in`.
+- [x] Served certificate issuer is Let's Encrypt.
+- [ ] Browser verification without certificate warning (not separately recorded yet).
 
 ### Telegram CTA
 
 - [ ] Existing rehearsal CTA changed from IP-based URL to `https://support.wisehealth.in/`.
 - [ ] Two-way Telegram text E2E rerun after hostname migration.
-- [ ] Existing `@wescura_support_bot` CTA remains unchanged.
-- [ ] POC `@wise_chatwoot_poc_bot` remains isolated until the replacement CTA is proven.
+- [x] Existing `@wescura_support_bot` CTA remains unchanged.
+- [x] POC `@wise_chatwoot_poc_bot` remains isolated until the replacement CTA is proven.
 
 ### Web Support
 
@@ -527,6 +556,11 @@ The stable-hostname work was performed in this order:
 12. Confirmed renewal with `certbot renew --dry-run`.
 13. Added persistent daily systemd renewal checking.
 14. Added a deploy hook to validate and reload Nginx after successful renewal.
-15. Nginx certificate activation remains the next controlled step.
+15. Backed up `/etc/nginx/conf.d/chatwoot.conf`.
+16. Changed the live Chatwoot TLS server block from the IP/self-signed certificate to `support.wisehealth.in` and the Let's Encrypt certificate.
+17. `nginx -t` passed.
+18. Nginx was gracefully reloaded.
+19. `https://support.wisehealth.in/` returned HTTP 200.
+20. SNI certificate verification confirmed the Let's Encrypt certificate for `support.wisehealth.in`.
 
 This sequence is the repeatable reference for future recreation of the hostname/TLS validation setup.
