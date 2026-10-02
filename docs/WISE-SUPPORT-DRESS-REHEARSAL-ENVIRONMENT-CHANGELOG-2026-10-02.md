@@ -1583,3 +1583,51 @@ The remaining proof is application-level media E2E:
 - Telegram two-way text regression after the storage change.
 
 Credential hygiene remains outstanding: the OCI secret key used during setup was exposed during diagnostics and must be rotated before treating the environment as production-safe. The secret itself is intentionally not recorded here.
+
+
+# 43. Post-remediation attachment E2E checkpoint — 2026-10-02
+
+The first real attachment tests after the WEB + WORKER OCI Active Storage migration have now been completed.
+
+## Outbound Chatwoot → Telegram
+
+The previously failing outbound attachment path is now working for the tested cases:
+
+- `.txt` document: delivered to Telegram patient — **PASS**;
+- image: delivered to Telegram patient — **PASS**.
+
+This is the first application-level evidence that the persistent shared OCI Active Storage remediation addressed the original outbound attachment delivery failure.
+
+## Inbound Telegram → Chatwoot
+
+The inbound attachment messages reach Chatwoot, but retrieval remains broken:
+
+- document: message received, attachment opening/download fails;
+- image: message received, attachment cannot be downloaded/rendered.
+
+One direct OCI object request returned `NoSuchKey`, showing that the referenced object key was not present in the bucket at retrieval time.
+
+The exact inbound pipeline failure remains to be traced; no further storage architecture change should be assumed necessary until that trace is complete.
+
+## Duplicate inbound attachment behaviour
+
+The same inbound attachment message is being displayed multiple times. One document test produced three copies, and refreshing the **Mine** inbox appeared to increase the visible count further. The same pattern was observed for the image attachment.
+
+This is a separate investigation track. Current evidence does not yet establish whether the duplication occurs during Telegram webhook processing, Sidekiq processing, DB persistence, API response/pagination, or browser refresh/rendering.
+
+## Current pilot-prep disposition
+
+**Improved / proven:**
+
+- shared OCI Active Storage runtime;
+- Chatwoot → Telegram document delivery;
+- Chatwoot → Telegram image delivery.
+
+**Still open:**
+
+- Telegram → Chatwoot document retrieval;
+- Telegram → Chatwoot image retrieval;
+- duplicate inbound attachment messages;
+- final attachment capability gate.
+
+The proven two-way text path remains the regression baseline.
