@@ -1420,3 +1420,74 @@ The stable-hostname migration and subsequent validation are now part of the rehe
 
 The two-way text Telegram path is the **regression baseline**. Attachment/media changes must not regress this path.
 
+
+
+# 41. Rails Active Storage → OCI S3 validation — 2026-10-02
+
+The attachment/storage investigation progressed through an isolated Rails Active Storage probe before any persistent container change.
+
+The live WEB container was launched only for the probe with:
+
+- `ACTIVE_STORAGE_SERVICE=s3_compatible`;
+- OCI namespace `ax3kknx0qqfm`;
+- region `ap-hyderabad-1`;
+- bucket `oracle-oci-bucket-chatwoot-wisehealth`;
+- OCI S3-compatible endpoint;
+- path-style access enabled.
+
+Rails reported:
+
+```
+service=s3_compatible
+service_class=ActiveStorage::Service::S3Service
+aws-sdk-s3=1.208.0
+```
+
+Rails Active Storage then successfully:
+
+- uploaded a temporary object;
+- confirmed existence;
+- downloaded the object and verified its contents;
+- deleted the object;
+- verified deletion.
+
+Temporary object:
+
+```
+_wise_support_active_storage_probe_20261002
+```
+
+The bucket was left empty after the test.
+
+### Significance
+
+The full storage integration path is now proven independently:
+
+```
+Chatwoot Rails Active Storage
+          ↓
+ActiveStorage::Service::S3Service
+          ↓
+AWS SDK S3 1.208.0
+          ↓
+OCI Object Storage S3 Compatibility API
+          ↓
+WISE Support attachment bucket
+```
+
+No persistent Chatwoot storage configuration was changed by this probe.
+
+### Next controlled change
+
+Before recreating WEB/WORKER, capture their current container creation parameters and environment so the proven rehearsal topology can be reproduced without accidentally changing:
+
+- PostgreSQL connectivity;
+- Redis connectivity;
+- SECRET_KEY_BASE;
+- network membership;
+- ports;
+- Telegram configuration;
+- Nginx ingress;
+- worker command.
+
+Then apply the same S3-compatible Active Storage configuration to both WEB and WORKER and verify the resulting runtime before media E2E.
