@@ -799,3 +799,57 @@ The attachment gate remains **OPEN**, but its scope has changed:
 - inbound duplicate-message behaviour: investigation required.
 
 Telegram two-way text remains the regression baseline and must continue to pass during this investigation.
+
+
+
+## 26. Telegram inbound retry / duplicate-message forensic resolution — 2026-10-02
+
+The duplicate inbound attachment behaviour has now been traced to the Telegram/Sidekiq retry path.
+
+### Finding
+
+For the affected Telegram event, the webhook received one update and enqueued one Webhooks::TelegramEventsJob. The same job was subsequently performed by the worker. The worker did not restart during the interval. Database inspection showed successive Chatwoot messages carrying the same Telegram source_id, with the later message completing the attachment upload.
+
+Earlier logs captured the failure path through Message#after_create_commit → Message#dispatch_create_events → attachment URL generation / Attachment#file_url → Missing host to link to!.
+
+The immediate runtime trigger was the missing worker FRONTEND_URL. That has already been corrected and verified.
+
+### Why the duplicate occurred
+
+The Telegram inbound service previously had no retry/idempotency handling, while messages.source_id was indexed but not unique.
+
+Therefore:
+
+Telegram event → first Sidekiq attempt → Chatwoot message persisted → post-create callback raises → Sidekiq retries same event → Telegram service creates a second message → retry succeeds.
+
+This matches the observed failed first copy followed by the successful second copy.
+
+### Definite application fix
+
+Implemented in wisedoctor/wise-support-chat on branch fix/telegram-retry-idempotency.
+
+The service now checks for an existing Telegram message with the same Telegram message_id in the relevant contact/inbox conversation scope before creating a new message.
+
+If found:
+- text message: no-op;
+- attachment with valid storage object: no-op;
+- attachment whose storage object is missing: repair the existing message instead of creating another message.
+
+Regression coverage was added for all three cases.
+
+No global unique constraint was added to messages.source_id.
+
+### GitHub state and validation
+
+Draft PR #1, fix(telegram): make inbound retries idempotent, contains the implementation and specs.
+
+The fix is not yet merged or deployed to the known-good OCI rehearsal. CI/test completion and controlled E2E validation remain outstanding.
+
+Next validation:
+1. run Telegram service specs;
+2. run relevant Chatwoot test subset;
+3. build/deploy the tested branch to controlled rehearsal;
+4. repeat fresh inbound document and image tests;
+5. verify one Chatwoot message per Telegram message_id and valid attachment objects;
+6. rerun two-way Telegram text regression.
+
