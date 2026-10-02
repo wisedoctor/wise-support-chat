@@ -297,7 +297,6 @@ Dependency ports remained host-local rather than public.
 ---
 
 # 11. PostgreSQL readiness and first migration failure
-
 PostgreSQL initially became healthy and accepted connections.
 
 The exact Chatwoot image successfully reached PostgreSQL through the private Docker network.
@@ -597,8 +596,7 @@ http://127.0.0.1:3000
 
 Forwarded headers include:
 
-- Host
-- X-Real-IP
+- Host- X-Real-IP
 - X-Forwarded-For
 - X-Forwarded-Proto
 
@@ -897,7 +895,6 @@ Redis showed current user presence and online status.
 This investigation should remain recorded as pilot/E2E evidence rather than environment setup.
 
 ---
-
 # 30. New Android patient-context rehearsal
 
 A separate Android device was used to test the new CTA as a genuinely new patient context.
@@ -1017,11 +1014,17 @@ No production UX change has yet been made as a result.
 - Chatwoot Web starts successfully.
 - Chatwoot Sidekiq worker starts successfully.
 - Nginx can expose Chatwoot through HTTPS.
-- Telegram accepts the IP-based webhook with a supplied certificate.
-- Telegram inbound text reaches Chatwoot.
+- A stable DNS hostname now resolves to the OCI Chatwoot ingress.
+- Let's Encrypt trusted TLS is active for `support.wisehealth.in`.
+- Chatwoot portal is reachable through `https://support.wisehealth.in` for support-rep access.
+- Telegram POC webhook has been migrated from the temporary IP endpoint to `https://support.wisehealth.in/webhooks/telegram/<bot-token>`.
+- Telegram reports `has_custom_certificate: false` on the hostname webhook, as expected with publicly trusted TLS.
+- Telegram reports `pending_update_count: 0` after migration.
+- Telegram inbound text reaches Chatwoot through the stable hostname.
 - Chatwoot creates/continues conversations.
-- Support Rep can service the conversation.
-- Chatwoot outbound text reaches Telegram.
+- Support Rep can service the conversation through the hostname-based portal.
+- Chatwoot outbound text reaches Telegram through the stable hostname path.
+- The two-way text E2E was rerun successfully after the hostname migration.
 - New patient context can enter the support conversation.
 - Chatwoot welcome-message capability exists.
 - Auto-assignment path has been exercised and observed assigning a conversation through Default Policy.
@@ -1030,7 +1033,6 @@ No production UX change has yet been made as a result.
 
 - reliable attachment/media delivery;
 - final attachment storage configuration;
-- stable DNS/TLS domain;
 - production Telegram bot identity;
 - production webhook;
 - production secrets management;
@@ -1046,6 +1048,120 @@ No production UX change has yet been made as a result.
 ---
 
 # 35. Temporary dress-rehearsal changes that must not silently become production assumptions
+
+The following are deliberately temporary or validation-specific:
+
+| Change | Status |
+|---|---|
+| Public OCI IP as infrastructure address | Validation-environment value; not a patient-facing URL |
+| Self-signed IP TLS certificate | Historical validation-only; trusted hostname TLS is now active |
+| TCP 443 open broadly | Validation-only; harden for production |
+| Telegram POC bot | Dress rehearsal only |
+| POC bot webhook on OCI IP | Replaced by stable hostname webhook |
+| GHCR SHA image selected for x86_64 | Retain immutable-image principle; production image decision later |
+| SuperAdmin validation user | Rework under RBAC |
+| Chatwoot local/default assignment policy | Pilot configuration; final policy to be established |
+| Welcome message configuration | Rehearsal capability; final copy/process TBD |
+| Current public OCI IP | May change |
+| Direct IP browser access with certificate warning | Historical validation-only |
+
+---
+
+# 36. Environment state at the end of dress rehearsal
+
+The hosted rehearsal currently represents:
+
+```
+Patient Telegram
+      ↓
+@wise_chatwoot_poc_bot
+      ↓
+https://support.wisehealth.in
+      ↓
+OCI Security List / firewalld
+      ↓
+Nginx trusted TLS termination
+      ↓
+Chatwoot Web :3000
+      ↓
+Chatwoot Telegram Channel
+      ↓
+Sidekiq
+      ↓
+PostgreSQL + pgvector / Redis
+      ↓
+Support Inbox
+      ↓
+Support Rep via https://support.wisehealth.in
+      ↓
+Telegram patient
+```
+
+The stable hostname is now the operational public ingress for the rehearsal.
+
+The Chatwoot support-rep portal is also available at:
+
+```
+https://support.wisehealth.in
+```
+
+The Telegram POC webhook is:
+
+```
+https://support.wisehealth.in/webhooks/telegram/<bot-token>
+```
+
+Telegram verification after migration:
+
+- `has_custom_certificate: false`;
+- `pending_update_count: 0`;
+- IP address: `140.245.237.47`.
+
+The two-way text E2E was rerun after this migration and passed.
+
+This is still **not the final production topology**. The hostname is stable for the validation environment, while the underlying OCI IP may change.
+
+---
+
+# 37. Relationship to other documents
+
+Use this document when asking:
+
+> What changes did we actually make to establish the hosted dress rehearsal?
+
+Use:
+
+- `WISE-SUPPORT-ENVIRONMENT-REFERENCE.md` for the current environment/infrastructure reference and architectural environment decisions.
+- `WISE-SUPPORT-STABLE-HTTPS-INGRESS-AND-TLS-RUNBOOK-2026-10-02.md` for the stable hostname, certificate issuance/renewal and Nginx TLS procedure.
+- `WISE-SUPPORT-PILOT-PREP-BACKLOG.md` for open pilot work and sequencing.
+- `WISE-SUPPORT-PILOT-PREP-HANDOVER-2026-10-02.md` for new-session context and continuation instructions.
+- `WISE_SUPPORT_CURRENT_ENVIRONMENT_AND_MAINTENANCE_RUNBOOK.md` for local/development diagnostics and maintenance.
+- `WISE-SUPPORT-CHATWOOT-TELEGRAM-FALLBACK-ARCHITECTURE.md` for the deferred fallback/restore architecture.
+
+---
+
+# 38. Final transition rule
+
+The dress rehearsal has served its purpose:
+
+**prove the support communication technology and expose the operational gaps.**
+
+The next work should therefore move toward:
+
+```
+Pilot-prep closure
+       ↓
+RBAC
+       ↓
+Initial Support → WISE hand-off
+       ↓
+Production entry-point audit/design
+       ↓
+Controlled production migration
+```
+
+Do not continue changing the rehearsal environment merely for experimentation once a pilot-prep item has enough evidence to proceed to the next milestone.
+ Temporary dress-rehearsal changes that must not silently become production assumptions
 
 The following are deliberately temporary or validation-specific:
 
@@ -1138,4 +1254,3 @@ Controlled production migration
 ```
 
 Do not continue changing the rehearsal environment merely for experimentation once a pilot-prep item has enough evidence to proceed to the next milestone.
-
