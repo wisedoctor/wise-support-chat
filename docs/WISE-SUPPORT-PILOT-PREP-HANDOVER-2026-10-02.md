@@ -1,0 +1,632 @@
+# WISE Support Pilot Prep — Session Handover / Seed Context
+
+**Prepared:** 2026-10-02  
+**Repository:** wisedoctor/wise-support-chat  
+**Branch:** develop  
+**Purpose:** Continue WISE Support pilot preparation in a fresh ChatGPT session without redoing the OCI/Chatwoot dress rehearsal investigation.
+
+---
+
+## 1. Current objective
+
+We are moving from a successful **Chatwoot + Telegram technical dress rehearsal** toward a controlled **WISE Support pilot**.
+
+The immediate goal is not to build the full future WISE context-aware router yet. The current sequence is:
+
+1. close the remaining pilot-prep / smoke-test gaps;
+2. move to **RBAC + initial operational hand-off**;
+3. then continue production entry-point and context-aware routing work deliberately.
+
+The larger product vision is:
+
+    discover / explore
+            ↓
+    self-serve where possible
+            ↓
+    clear intent → relevant WISE capability
+            ↓
+    unclear / blocked / operational issue
+            ↓
+    context-aware WISE Support
+            ↓
+    human resolution
+
+Support should therefore be a **human-resolution path**, not a generic destination for every CTA.
+
+---
+
+## 2. Architecture direction already established
+
+WISE Support is intended to be channel/provider agnostic.
+
+Current provider:
+- self-hosted Chatwoot.
+
+Current rehearsal channel:
+- Telegram.
+
+Future channels can include:
+- WISE web chat;
+- WhatsApp;
+- email;
+- other channels.
+
+The intended conceptual separation remains:
+
+- apps own authoritative workflows;
+- support handles conversations, identity/context, routing and human servicing;
+- bridges handle integrations;
+- support must not become a duplicate CRM or duplicate authoritative domain database.
+
+The previously documented fallback architecture also remains intentionally deferred:
+- Chatwoot-backed path;
+- direct Telegram fallback path;
+- explicit webhook/polling ownership;
+- RBAC and operational controls before implementation.
+
+---
+
+## 3. Two Telegram bots — keep strictly separate
+
+### Dress-rehearsal bot
+@wise_chatwoot_poc_bot
+
+Used for:
+- OCI Chatwoot dress rehearsal;
+- Telegram ↔ Chatwoot E2E;
+- current pilot-prep testing.
+
+### Existing WISE Support bot
+@wescura_support_bot
+
+Used by the existing WISE backend support path.
+
+Credential:
+- TELEGRAM_SUPPORT_BOT_TOKEN
+
+**Never mix these two bots or their webhook ownership.**
+
+The POC token has been exposed during diagnostics and should be rotated before any production use.
+
+Final patient-facing bot identity remains deferred.
+
+---
+
+## 4. OCI Chatwoot environment — current known-good state
+
+OCI VM:
+
+- public IP: 140.245.237.47
+- Oracle Linux Server 9.8 x86_64
+- 1 OCPU / 16 GB RAM
+- Docker installed
+- private Docker network: wise-support-net
+
+Containers:
+
+- wise-support-chat-web
+- wise-support-chat-worker
+- wise-support-postgres
+- wise-support-redis
+
+Chatwoot image:
+
+    ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176
+
+Verified image:
+- linux/amd64
+- Ruby 3.4.4
+- Rails 7.2.3.1
+- Chatwoot v4.14.2 lineage
+
+Postgres:
+- pgvector image;
+- migrations complete;
+- 107 public tables observed;
+- all migrations up.
+
+Redis:
+- persistent AOF;
+- reachable from Chatwoot image.
+
+Chatwoot web:
+- Rails/Puma listening on port 3000 internally.
+
+Public validation:
+- Nginx terminates HTTPS on port 443;
+- temporary self-signed certificate for IP 140.245.237.47;
+- OCI security list TCP/443 currently opened for validation;
+- firewalld HTTPS enabled;
+- SELinux httpd_can_network_connect enabled.
+
+This is a validation/dress-rehearsal environment, not yet production hardened.
+
+---
+
+## 5. Telegram webhook currently used for POC
+
+The POC bot was moved from the old public WISE path to the OCI Chatwoot endpoint:
+
+    https://140.245.237.47/webhooks/telegram/<bot-token>
+
+Telegram getWebhookInfo confirmed:
+
+- webhook active;
+- custom certificate enabled;
+- IP = 140.245.237.47;
+- pending updates cleared.
+
+Do not copy or expose the actual bot token.
+
+Webhook ownership remains an important operational guardrail because Telegram allows only one active webhook per bot.
+
+---
+
+## 6. Proven two-way text E2E
+
+The following path is proven:
+
+    Patient Telegram
+        ↓
+    Telegram webhook
+        ↓
+    OCI Nginx / HTTPS
+        ↓
+    Chatwoot Telegram channel
+        ↓
+    Chatwoot / Sidekiq
+        ↓
+    Conversation
+        ↓
+    Support-rep reply
+        ↓
+    Chatwoot Telegram adapter
+        ↓
+    Patient Telegram
+
+Proven behaviours:
+
+- inbound Telegram text reaches Chatwoot;
+- contact is created/identified;
+- conversation is created;
+- Sidekiq processes Telegram events;
+- support rep can reply from Chatwoot;
+- reply reaches patient Telegram.
+
+This is now the baseline regression path.
+
+---
+
+## 7. Important assignment investigation — what we learned
+
+The assignment investigation was deeper than simply checking the green availability dot.
+
+Chatwoot 4.14.2 source showed:
+
+    inbox.auto_assignment_v2_enabled?
+    inbox.enable_auto_assignment?
+    inbox.available_agents
+
+The assignment service then selects an available agent and assigns the conversation atomically.
+
+Most important finding:
+
+    def available_agents
+      online_agent_ids = fetch_online_agent_ids
+      return inbox_members.none if online_agent_ids.empty?
+
+      inbox_members
+        .joins(:user)
+        .where(users: { id: online_agent_ids })
+        .includes(:user)
+    end
+
+and:
+
+    OnlineStatusTracker.get_available_users(account_id)
+      .select { |_key, value| value.eql?('online') }
+
+Online presence is therefore materially relevant to auto-assignment.
+
+The browser's Chatwoot ActionCable connection showed:
+
+- RoomChannel subscribed;
+- regular update_presence calls;
+- presence updates being broadcast;
+- browser heartbeat/ping traffic.
+
+The connector source showed:
+
+- PRESENCE_INTERVAL = 20000 ms;
+- update_presence sent through ActionCable;
+- RoomChannel calls OnlineStatusTracker.update_presence.
+
+OCI Redis inspection subsequently showed:
+
+    PRESENCE_KEY=ONLINE_PRESENCE::1::USERS
+    PRESENCE=["1"]
+    STATUS="online"
+
+and later:
+
+    USERS={"1" => "online"}
+    SCORE=<recent timestamp>
+    AGE=15
+
+So the browser session was genuinely establishing current online presence.
+
+### Crucial operational observation
+
+At one diagnostic point:
+
+    AVAILABLE_USERS={}
+    AVAILABLE_AGENT_IDS=[]
+
+even though the user-level status was online.
+
+This explains why assignment could initially remain Unassigned: the availability path is not simply the static UI green dot.
+
+Later, after the browser presence was active, a conversation was visibly assigned:
+
+> Assigned to Sreedhar Byreeka by Default Policy
+
+and appeared under My Inbox / Assigned to you.
+
+This was **not manually pushed via a script**.
+
+The assignment was performed by Chatwoot's own automatic-assignment path, using the configured Default Policy.
+
+The worker-side AssignmentJob and AssignmentService were also inspected.
+
+### Important testing nuance
+
+A follow-up message on an already-open conversation does not necessarily create a new conversation. Therefore, testing assignment using subsequent messages on the same open conversation is not equivalent to testing assignment of a genuinely new conversation.
+
+For a clean assignment test:
+1. use a new patient/contact or resolve the previous conversation;
+2. create a genuinely new conversation;
+3. ensure the rep's ActionCable presence is active;
+4. observe AssignmentJob / My Inbox / Unassigned.
+
+---
+
+## 8. Current new-patient rehearsal
+
+A second Android device was used to test the new CTA with a new patient context.
+
+Patient Telegram:
+
+    /start
+    Need medicines for my son
+
+Support replied:
+
+    do you have Rx?
+
+Chatwoot showed:
+
+- new contact: Durga;
+- conversation #2;
+- correct Telegram POC inbox;
+- conversation currently visible under Unassigned in the latest screenshot;
+- support rep can respond from Chatwoot.
+
+This is a particularly useful pilot scenario because it exercises:
+
+**new user → medicine intent → human support**
+
+rather than merely continuing the original test conversation.
+
+Do not treat the current Unassigned state as evidence that auto-assignment is completely broken; the preceding investigation demonstrated that assignment depends on the online/presence path and timing. Continue diagnosing systematically.
+
+---
+
+## 9. Attachment/media gap — pilot blocker
+
+Text is proven, but attachments are not.
+
+Observed failures:
+
+### Chatwoot → Telegram .txt
+A simple outbound text-file attachment:
+- did not reach the patient;
+- Chatwoot displayed the outbound message as failed/red.
+
+### Chatwoot → Telegram Rx image
+A prescription-sheet image/photo:
+- did not reach the patient;
+- also showed failure/red.
+
+Treat these as a potentially broader **attachment/media handling** issue.
+
+Investigate before marking the channel pilot-ready:
+
+- Chatwoot attachment upload;
+- Active Storage/object storage configuration;
+- generated attachment URL;
+- public accessibility of attachment;
+- OCI/Nginx HTTPS;
+- Telegram document/photo API handling;
+- Chatwoot Telegram channel adapter;
+- Sidekiq worker logs;
+- Telegram API response.
+
+Potential validation matrix:
+
+| Direction | Text | Image/Rx | Document |
+|---|---|---|---|
+| Patient → Chatwoot | proven | verify | verify |
+| Chatwoot → Patient | proven | failing | failing |
+
+---
+
+## 10. Welcome message / first-contact UX
+
+The current Chatwoot Telegram channel demonstrates that a configurable welcome/onboarding message is available.
+
+This is now considered an architectural capability, not merely UI copy.
+
+Desired future behaviour:
+
+- explain what WISE Support can help with;
+- make the first interaction friendly;
+- capture the minimum useful context;
+- avoid asking the patient to repeat context already known from the entry point;
+- establish expectations for human support.
+
+Potential context:
+
+- source / entry point;
+- current WISE ecosystem surface;
+- location/pincode where relevant;
+- medicine/request context;
+- existing request/booking reference;
+- what the user wants to accomplish.
+
+The eventual WISE Support abstraction should expose an equivalent welcome/onboarding capability even if Chatwoot is replaced later.
+
+---
+
+## 11. Telegram /start UX
+
+The current Telegram first-contact flow exposes /start.
+
+Open questions:
+
+1. Can the explicit user-facing /start action be avoided?
+2. If not, what can be customized around it?
+3. Can holding-page/CTA text explain it naturally?
+4. Can the welcome message make the interaction feel like "Start Support" rather than a technical bot command?
+5. Can unnecessary "bot" terminology be removed from the user-facing experience?
+
+Do not assume Telegram limitations until verified against the actual implementation.
+
+---
+
+## 12. Context-aware CTA / smart routing vision
+
+The earlier WISE/Wescura design work envisioned a smarter routing layer rather than hard-coded destinations.
+
+Relevant concepts include:
+
+- prospects / exploratory curiosity;
+- actual intent;
+- medicine-request intent;
+- broader WISE ecosystem discovery;
+- direct registration/offer/workflow entry where appropriate;
+- location/serviceability;
+- current WISE capabilities;
+- existing journey/source context;
+- Support as the human-resolution fallback.
+
+The current /smart route in quick-chat-landing is an important historical placeholder for this idea.
+
+The future direction is:
+
+    Who + What + Where
+           +
+    Why / When where available
+           ↓
+    WISE context / intent router
+           ↓
+    self-serve / relevant offer / registration / workflow
+           OR
+    context-aware Support
+
+The immediate pilot should **not** implement the full router prematurely.
+
+First audit the production entry points and current hard-coded destinations.
+
+---
+
+## 13. Production entry-point audit — current planned work
+
+Inventory:
+
+- current holding page;
+- /smart;
+- QR destinations;
+- Wescura Medicines entry points;
+- future WISE Health web chat widget;
+- WISE Doctor entry points;
+- existing-request/status links;
+- campaign/deep-link entry points.
+
+For each determine:
+
+- current destination;
+- intended audience/intent;
+- context already available;
+- self-serve option;
+- Support fallback;
+- future smart-routing opportunity;
+- whether current behaviour should remain unchanged during pilot.
+
+**Do not migrate production code merely because the smarter architecture exists.**
+
+Audit first → design transition → implement deliberately.
+
+---
+
+## 14. RBAC + initial hand-off milestone
+
+After the immediate five pilot-prep items are sufficiently closed, move into the first operational milestone.
+
+### RBAC
+
+Define:
+
+- Support Rep;
+- Support/Ops supervisory roles;
+- administrative/platform roles;
+- channel/inbox administration permissions;
+- view/claim/assign/reply/resolve/private-note capabilities;
+- boundary between Chatwoot permissions and WISE domain permissions;
+- audit requirements.
+
+### Initial hand-off
+
+Prove the first controlled:
+
+    Support conversation
+          ↓
+    known context / intent
+          ↓
+    appropriate WISE operational module
+          ↓
+    normal authoritative workflow
+          ↓
+    audited outcome
+
+The hand-off should **not duplicate domain workflows inside Support**.
+
+Example principle already discussed:
+A support rep may create a medicine request on behalf of a patient, but that request should enter the normal WISE/Ops request lifecycle rather than becoming a separate Chatwoot-only workflow.
+
+This is the milestone that moves the project from:
+
+> "technology works"
+
+to:
+
+> "a controlled support operation can use it and hand work into WISE correctly."
+
+---
+
+## 15. Five immediate pilot-prep workstreams
+
+These are the immediate workstreams to close before RBAC / initial hand-off:
+
+### Workstream A — Assignment + Inbox/Conversation
+- resolve auto-assignment behaviour;
+- cleanly test new conversations;
+- document Inbox vs Conversation vs My Inbox vs Unassigned;
+- verify resolve/re-entry behaviour.
+
+### Workstream B — Attachments / Media
+- debug .txt failure;
+- debug Rx image failure;
+- verify storage/public URL path;
+- establish attachment capability gate.
+
+### Workstream C — Welcome / /start UX
+- verify Telegram constraints;
+- refine first-contact wording;
+- configure/test welcome message;
+- document the eventual provider-neutral capability.
+
+### Workstream D — Context handoff
+- define minimum support context;
+- distinguish source/identity/intent/location/existing-request context;
+- determine what can be passed automatically vs asked by rep.
+
+### Workstream E — Production entry-point audit
+- audit /smart;
+- audit current CTAs;
+- audit QR;
+- audit Medicines;
+- audit future web-chat entry;
+- audit WISE Doctor / wider WISE Health routes;
+- map hard-coded destinations to future smart-routing opportunities.
+
+**Exit condition:** enough evidence/design clarity to proceed to RBAC and the initial Support → WISE operational hand-off.
+
+---
+
+## 16. Existing documentation
+
+Key files in wise-support-chat/docs:
+
+- WISE-SUPPORT-ENVIRONMENT-REFERENCE.md
+- WISE-SUPPORT-ENVIRONMENT-MATRIX.md
+- WISE-SUPPORT-CHATWOOT-TELEGRAM-FALLBACK-ARCHITECTURE.md
+- WISE-SUPPORT-PRODUCTION-MAINTENANCE.md
+- WISE_SUPPORT_CURRENT_ENVIRONMENT_AND_MAINTENANCE_RUNBOOK.md
+- WISE-SUPPORT-PILOT-PREP-BACKLOG.md — current active backlog
+
+The fallback architecture is intentionally deferred until the current pilot/RBAC work matures.
+
+---
+
+## 17. Documentation rule for next session
+
+Continue updating the running environment/reference documentation when environment state changes.
+
+Keep **environment setup** separate from **smoke testing / E2E integration evidence**.
+
+Pilot findings such as:
+- assignment behaviour;
+- attachment failures;
+- welcome-message observations;
+- entry-point rehearsals;
+- successful text E2E;
+
+belong in the pilot/E2E evidence or pilot backlog, not as environment setup facts unless they materially change infrastructure state.
+
+---
+
+## 18. Security reminders
+
+- Never paste Telegram bot tokens into chat or documentation.
+- Rotate the exposed POC token before production use.
+- Never expose the OCI private TLS key.
+- Temporary self-signed IP certificate is validation-only.
+- Production HTTPS/TLS, DNS, secrets, firewall hardening, backups, object storage, monitoring and recovery remain outstanding before production readiness.
+
+---
+
+## 19. Exact continuation instructions for a new ChatGPT session
+
+Start by reading this handover and the active backlog.
+
+Then continue with the **next unresolved item in the five-workstream sequence**, not by rebuilding the environment.
+
+Preferred working style:
+
+1. verify current state before changing anything;
+2. use exact source/code/log evidence rather than guessing;
+3. one risky operational change at a time;
+4. preserve successful text E2E;
+5. do not mix the two Telegram bots;
+6. do not make production changes until the production entry-point audit is complete;
+7. update the running documentation after meaningful checkpoints;
+8. once the five immediate workstreams are sufficiently closed, move to **RBAC + initial hand-off**.
+
+### Seed prompt
+
+Continue the WISE Support pilot-prep work from the handover document WISE-SUPPORT-PILOT-PREP-HANDOVER-2026-10-02.md and the active backlog WISE-SUPPORT-PILOT-PREP-BACKLOG.md in wisedoctor/wise-support-chat on develop.
+
+The OCI-hosted Chatwoot v4.14.2 dress rehearsal is operational and two-way Telegram text communication is proven. Do not rebuild the environment or redo the completed E2E work.
+
+Work through these five immediate pilot-prep workstreams:
+1. assignment + Inbox/Conversation behaviour;
+2. attachment/media failures;
+3. welcome-message + Telegram /start UX;
+4. context handoff;
+5. production entry-point audit.
+
+Once sufficiently closed, proceed to the RBAC + initial operational hand-off milestone.
+
+Preserve the larger WISE vision: context-aware routing should choose self-serve/relevant WISE capability where possible and route unclear/blocked/operational issues to human Support with whatever context is already known. Do not prematurely implement the full smart router or fallback engine.
+
+Be precise, evidence-driven, incremental, and keep updating the documentation after meaningful checkpoints.
