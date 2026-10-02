@@ -378,3 +378,53 @@ Do not remove the preserved old containers until media E2E is complete.
 ### Security follow-up
 
 The OCI secret key used during diagnostics was exposed during the session and must be rotated after functional validation. The replacement credential should then be applied to both WEB and WORKER and storage re-verified.
+
+
+## 15. Post-remediation media E2E findings — 2026-10-02
+
+The first application-level attachment tests were run after both WEB and WORKER were moved to the OCI S3-compatible Active Storage backend.
+
+### Outbound direction — PASS
+
+**Chatwoot → Telegram document:** PASS.
+
+A `.txt` document sent by the Support Rep was delivered to the Telegram patient.
+
+**Chatwoot → Telegram image:** PASS.
+
+An image sent by the Support Rep was delivered to the Telegram patient.
+
+This establishes that the shared OCI Active Storage backend is usable for the outbound attachment path and that the earlier outbound attachment failures are no longer reproduced for these tested types.
+
+### Inbound direction — retrieval remains broken
+
+**Telegram → Chatwoot document:** the message reaches Chatwoot, but opening the attachment fails.
+
+A direct request to the generated OCI object URL returned an OCI `NoSuchKey` response stating that the requested object key was not found in the configured bucket.
+
+**Telegram → Chatwoot image:** the message reaches Chatwoot, but the image cannot be downloaded/rendered successfully.
+
+The evidence shows a missing or incorrectly referenced object at retrieval time, but does not yet establish where the inbound pipeline lost or mis-keyed the object.
+
+### Duplicate inbound attachment messages
+
+The same inbound attachment messages are appearing repeatedly in the Chatwoot conversation. A single document message was observed as three copies, and refreshing the **Mine** inbox appeared to increase the visible count further. The same behaviour was observed with an inbound image attachment.
+
+The current evidence does not establish whether duplicates arise from repeated Telegram update processing, repeated Sidekiq execution, duplicate persistence, API/pagination behaviour, or browser refresh/render behaviour.
+
+### Next investigation scope
+
+Trace one inbound attachment end-to-end:
+
+Telegram update → Chatwoot Telegram webhook → Sidekiq job → Telegram file retrieval → Active Storage blob/attachment creation → OCI object PUT → DB blob/key → Chatwoot attachment URL → OCI object GET
+
+For the duplicate issue, correlate the same Telegram update through webhook logs, Sidekiq and persisted Chatwoot messages before making any cleanup change.
+
+### Updated status
+
+- Shared OCI Active Storage infrastructure: **PASS**
+- Chatwoot → Telegram document: **PASS**
+- Chatwoot → Telegram image: **PASS**
+- Telegram → Chatwoot document retrieval: **FAIL**
+- Telegram → Chatwoot image retrieval: **FAIL**
+- Duplicate inbound attachment behaviour: **OPEN / INVESTIGATION REQUIRED**
