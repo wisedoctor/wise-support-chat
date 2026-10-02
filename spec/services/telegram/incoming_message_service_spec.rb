@@ -311,6 +311,73 @@ describe Telegram::IncomingMessageService do
       end
     end
 
+    context 'when Telegram message is retried' do
+      it 'does not create a duplicate for a text message' do
+        params = {
+          'update_id' => 2_342_342_343_242,
+          'message' => { 'text' => 'retry-test' }.merge(message_params)
+        }.with_indifferent_access
+
+        described_class.new(inbox: telegram_channel.inbox, params: params).perform
+
+        expect {
+          described_class.new(inbox: telegram_channel.inbox, params: params).perform
+        }.not_to change { telegram_channel.inbox.messages.count }
+      end
+
+      it 'does not create a duplicate when the existing attachment is intact' do
+        allow(telegram_channel.inbox.channel).to receive(:get_telegram_file_path).and_return('https://chatwoot-assets.local/sample.pdf')
+        params = {
+          'update_id' => 2_342_342_343_242,
+          'message' => {
+            'document' => {
+              'file_id' => 'retry-file-id',
+              'file_name' => 'retry.pdf',
+              'mime_type' => 'application/pdf',
+              'file_size' => 536_392
+            }
+          }.merge(message_params)
+        }.with_indifferent_access
+
+        described_class.new(inbox: telegram_channel.inbox, params: params).perform
+
+        expect {
+          described_class.new(inbox: telegram_channel.inbox, params: params).perform
+        }.not_to change { telegram_channel.inbox.messages.count }
+        expect(telegram_channel.inbox.messages.last.attachments.count).to eq(1)
+      end
+
+      it 'repairs an existing attachment when its storage object is missing' do
+        allow(telegram_channel.inbox.channel).to receive(:get_telegram_file_path).and_return('https://chatwoot-assets.local/sample.pdf')
+        params = {
+          'update_id' => 2_342_342_343_242,
+          'message' => {
+            'document' => {
+              'file_id' => 'repair-file-id',
+              'file_name' => 'repair.pdf',
+              'mime_type' => 'application/pdf',
+              'file_size' => 536_392
+            }
+          }.merge(message_params)
+        }.with_indifferent_access
+
+        described_class.new(inbox: telegram_channel.inbox, params: params).perform
+        message = telegram_channel.inbox.messages.last
+        original_key = message.attachments.first.blob.key
+        message.attachments.first.blob.service.delete(original_key)
+        expect(message.attachments.first.blob.service.exist?(original_key)).to be(false)
+
+        expect {
+          described_class.new(inbox: telegram_channel.inbox, params: params).perform
+        }.not_to change { telegram_channel.inbox.messages.count }
+
+        message.reload
+        expect(message.attachments.count).to eq(1)
+        expect(message.attachments.first.blob.service.exist?(message.attachments.first.blob.key)).to be(true)
+        expect(message.attachments.first.blob.key).not_to eq(original_key)
+      end
+    end
+
     context 'when attachment params have no file_name' do
       it 'falls back to the downloaded file name' do
         allow(telegram_channel.inbox.channel).to receive(:get_telegram_file_path).and_return('https://chatwoot-assets.local/sample.png')
