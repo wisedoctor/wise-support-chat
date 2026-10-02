@@ -14,24 +14,24 @@ It is an environment reference, not a commitment to a single infrastructure vend
 | Source branch | Local working branch | `develop` during validation | Controlled release branch/tag |
 | Image build | Local Docker or source runtime | GitHub Actions → GHCR | GitHub Actions → GHCR |
 | Image registry | Local build / GHCR as needed | GHCR | GHCR or approved OCI registry |
-| Runtime | Local Docker / processes | Render | Managed production runtime |
-| Rails web | Local Chatwoot container | Render Web Service | Dedicated production web service |
-| Sidekiq | Local Chatwoot container | Render Background Worker | Dedicated production worker |
-| Database | Local PostgreSQL/Chatwoot DB | Render PostgreSQL 16 currently | Render PostgreSQL, WISE Supabase PostgreSQL, or OCI PostgreSQL after decision |
-| Queue/cache | Local Redis-compatible service | Render Key Value currently | Approved persistent/managed Redis-compatible service |
+| Runtime | Local Docker / processes | OCI Compute (current); Render archived | Managed production runtime |
+| Rails web | Local Chatwoot container | OCI `wise-support-chat-web` | Dedicated production web service |
+| Sidekiq | Local Chatwoot container | OCI `wise-support-chat-worker` | Dedicated production worker |
+| Database | Local PostgreSQL/Chatwoot DB | OCI `wise-support-postgres` / pgvector:pg16 | Render PostgreSQL, WISE Supabase PostgreSQL, or OCI PostgreSQL after decision |
+| Queue/cache | Local Redis-compatible service | OCI `wise-support-redis` | Approved persistent/managed Redis-compatible service |
 | Object storage | Local/test storage as required | OCI Object Storage | Approved persistent object storage |
 | Conversation provider | Chatwoot | Chatwoot | Chatwoot initially; provider remains replaceable |
 | External channel | Telegram | Telegram | Telegram initially; additional channels later |
 | Telegram support bot | `@wescura_support_bot` / WISE-owned support path | Same only where required | Separate production configuration |
 | Chatwoot Telegram bot | `@wise_chatwoot_poc_bot` | POC/validation bot | Dedicated production bot/configuration; never reuse POC credentials |
-| Webhook ingress | ngrok + local proxy | Stable Render/WISE endpoint | Stable WISE-owned ingress |
+| Webhook ingress | ngrok + local proxy | `support.wisehealth.in` → OCI Nginx | Stable WISE-owned ingress |
 | Local proxy | Used for multiplexing local Chatwoot + WISE backend | Not required | Prohibited as production architecture |
 | Public tunnel | ngrok | Not required once stable ingress is available | Not used |
-| Secrets | Local `.env` / secret store | Render environment secrets | Production secret manager/environment |
+| Secrets | Local `.env` / secret store | OCI/runtime secrets; never committed | Production secret manager/environment |
 | Patient data | Synthetic/test data only | Synthetic or explicitly approved test data | Real data under production controls |
 | Database migrations | Local Rails migration workflow | Controlled deployment migration | Controlled release migration |
 | Attachments | Test uploads | OCI S3-compatible storage test | Persistent production object storage |
-| Monitoring | Console/container logs | Render logs + application logs | Centralized logs, alerts, audit/operational monitoring |
+| Monitoring | Console/container logs | OCI/container logs + application logs | Centralized logs, alerts, audit/operational monitoring |
 | Webhook security | Local testing | Validate provider/auth/signature controls | Mandatory verification where supported |
 | Backup/restore | Local/test | Validation only | Required and tested |
 | Availability expectation | Developer workstation | Pilot/validation | Production SLA/operational target |
@@ -39,7 +39,7 @@ It is an environment reference, not a commitment to a single infrastructure vend
 
 ## Current validation resources
 
-The current hosted validation environment is being assembled in Singapore:
+The earlier Render validation resources were assembled in Singapore and are now historical/archived:
 
 - Render PostgreSQL: `wise-support-chat-db`
 - Render Key Value: `wise-support-chat-redis`
