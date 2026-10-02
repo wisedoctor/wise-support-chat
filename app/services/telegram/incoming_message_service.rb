@@ -83,13 +83,14 @@ class Telegram::IncomingMessageService
   end
 
   def find_existing_message
-    @contact_inbox.conversations
-      .joins(:messages)
-      .where(messages: { source_id: telegram_params_message_id.to_s })
-      .order('messages.created_at ASC')
-      .first
-      &.messages
-      &.find_by(source_id: telegram_params_message_id.to_s)
+    conversation = @contact_inbox.conversations
+                              .joins(:messages)
+                              .where(messages: { source_id: telegram_params_message_id.to_s })
+                              .order('messages.created_at ASC')
+                              .first
+    return if conversation.blank?
+
+    conversation.messages.find_by(source_id: telegram_params_message_id.to_s)
   end
 
   def repair_existing_message(message)
