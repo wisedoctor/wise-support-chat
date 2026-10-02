@@ -315,3 +315,66 @@ The next step is now the controlled persistent configuration change:
 8. rerun document/image attachment E2E.
 
 No storage configuration change should be made until the current container creation parameters are captured so that the existing rehearsal topology can be reproduced safely.
+
+
+## 14. Persistent remediation — PASS at runtime configuration level
+
+The controlled remediation described above has now been executed.
+
+### Evidence preservation
+
+The three recoverable WEB diagnostic files were copied before replacement to:
+
+`~/wise-support-storage-backup-20261002/`
+
+They remain forensic evidence and were not copied to the OCI bucket.
+
+### WEB replacement
+
+The previous WEB container was preserved as:
+
+`wise-support-chat-web-disk-20261002`
+
+A replacement container using the same immutable image was started with the OCI S3-compatible Active Storage configuration.
+
+Live Rails verification returned:
+
+```
+service=s3_compatible
+class=ActiveStorage::Service::S3Service
+```
+
+A live Rails probe then successfully performed upload, existence check, download and deletion, with deletion verified.
+
+### WORKER replacement
+
+The previous WORKER container was preserved as:
+
+`wise-support-chat-worker-disk-20261002`
+
+A replacement WORKER using the same immutable image and OCI storage configuration was started successfully.
+
+Live Rails verification returned:
+
+```
+service=s3_compatible
+class=ActiveStorage::Service::S3Service
+```
+
+Sidekiq also resumed normal scheduled/background processing.
+
+### Updated conclusion
+
+The original container-local DiskService topology is no longer the active WEB/WORKER runtime. Both live processes now use the shared OCI S3-compatible Active Storage backend.
+
+The remediation is therefore **PASS at infrastructure/runtime level**.
+
+It is deliberately **not yet a PASS for attachment capability**. Only the subsequent real Chatwoot/Telegram media E2E can establish that the original document/Rx-image delivery failures are resolved.
+
+### Rollback retention
+
+Do not remove the preserved old containers until media E2E is complete.
+
+### Security follow-up
+
+The OCI secret key used during diagnostics was exposed during the session and must be rotated after functional validation. The replacement credential should then be applied to both WEB and WORKER and storage re-verified.
