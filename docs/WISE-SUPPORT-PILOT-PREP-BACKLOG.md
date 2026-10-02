@@ -522,3 +522,41 @@ Keep the preserved old WEB/WORKER containers until the media regression is compl
 ### Security follow-up
 
 The OCI secret key used during diagnostics was exposed during the session. Rotate it after functional validation and update both runtime containers before production use.
+
+
+## 17. Updated attachment/media checkpoint — 2026-10-02
+
+**Status:** Outbound attachment delivery proven; inbound attachment retrieval and duplicate-message behaviour remain open.
+
+### Newly proven
+
+After the persistent OCI S3-compatible Active Storage change:
+
+- **Chatwoot → Telegram document:** PASS.
+- **Chatwoot → Telegram image:** PASS.
+
+This demonstrates that the storage remediation has resolved the previously observed outbound attachment delivery failure for the tested document/image types.
+
+### Remaining blocker — Telegram → Chatwoot attachments
+
+Inbound Telegram attachments reach the Chatwoot conversation, but the referenced attachments cannot be retrieved:
+
+- document: received but opening/download fails;
+- image: received but image download/render fails.
+
+A direct OCI request for one generated object URL returned `NoSuchKey`, so the requested object was not present at the referenced key. Trace the inbound attachment pipeline before changing the storage architecture again.
+
+### Separate open issue — duplicate inbound attachment messages
+
+The same inbound attachment message is appearing multiple times in Chatwoot. One document test produced three visible copies, and refreshing **Mine** appeared to increase the count. The image showed the same pattern.
+
+Investigate update-id handling, webhook/Sidekiq processing, DB message persistence and frontend refresh/API behaviour separately. Do not perform cleanup until the source is identified.
+
+### Revised attachment capability gate
+
+| Direction | Text | Image/Rx | Document |
+|---|---|---|---|
+| Patient → Chatwoot | PASS | received / retrieval FAIL | received / retrieval FAIL |
+| Chatwoot → Patient | PASS | PASS | PASS |
+
+The pilot attachment gate therefore remains open, but the original outbound-storage problem is no longer the primary blocker.
