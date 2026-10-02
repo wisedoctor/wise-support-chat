@@ -1,6 +1,7 @@
 # WISE Support Pilot Prep — Session Handover / Seed Context
 
 **Prepared:** 2026-10-02  
+**Latest checkpoint:** WISE Health Website Support Inbox configured; native `/support` integration is next  
 **Repository:** wisedoctor/wise-support-chat  
 **Branch:** develop  
 **Purpose:** Continue WISE Support pilot preparation in a fresh ChatGPT session without redoing the OCI/Chatwoot dress rehearsal investigation.
@@ -464,6 +465,70 @@ For each determine:
 **Do not migrate production code merely because the smarter architecture exists.**
 
 Audit first → design transition → implement deliberately.
+
+---
+
+## 15. Native WISE Health web-support checkpoint
+
+A dedicated Chatwoot Website Inbox has now been created for the WISE Health portal.
+
+Configured state:
+
+- Inbox: `WISE Health™ Support`
+- Website domain: `https://wisehealth.in`
+- Welcome heading: `WISE Health™ Support`
+- Welcome message: configured
+- Friendly sender identity: WISE Health
+- Collaborators: configured
+- Widget preview: verified
+- Website token: generated; secret is not recorded in Git or this handover
+
+This is configuration readiness only. The following browser E2E path is still to be proven:
+
+```
+wisehealth.in/support
+      ↓
+native WISE Health Support page
+      ↓
+Start Support
+      ↓
+Chatwoot Website Inbox
+      ↓
+WISE Health™ Support
+      ↓
+Support Rep
+      ↓
+browser reply
+```
+
+### Repository boundary
+
+Keep the existing architecture decision explicit:
+
+- `wisedoctor/quick-chat-landing` owns the WISE Health application, native `/support` page, presentation/navigation and entry-point experience.
+- `wisedoctor/wise-support-chat` owns Chatwoot/provider-specific support implementation and operational configuration.
+- Do not copy the earlier provider-specific `ChatwootWidget.tsx` experiment wholesale into the core repo.
+- Do not commit the Website Inbox token.
+- Telegram POC and existing `@wescura_support_bot` remain separate and must not be changed as part of this web-support slice.
+
+### Next implementation sequence
+
+1. In `quick-chat-landing`, establish the native `/support` route/page from the current application branch/state.
+2. Keep the page's support-launch interface provider-neutral at the application boundary.
+3. Connect that interface to the configured Chatwoot Website Inbox using secret/runtime configuration rather than source-controlled credentials.
+4. Deploy to the appropriate WISE Health validation environment.
+5. Prove browser → Website Inbox → Support Rep → browser reply.
+6. Verify assignment, persistence/re-entry and refresh behaviour.
+7. Run the existing Telegram two-way text regression without changing its configuration.
+8. Record the E2E result before moving to the next pilot-prep item.
+
+### Explicit non-goals for this slice
+
+- no full context-aware router;
+- no production Telegram bot migration;
+- no replacement of the existing Telegram POC path;
+- no broad support-provider abstraction implementation beyond what is required to keep the application boundary clean;
+- no production entry-point migration before the audit.
 
 ---
 
