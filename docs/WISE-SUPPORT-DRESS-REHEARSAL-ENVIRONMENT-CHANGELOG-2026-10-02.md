@@ -1491,3 +1491,95 @@ Before recreating WEB/WORKER, capture their current container creation parameter
 - worker command.
 
 Then apply the same S3-compatible Active Storage configuration to both WEB and WORKER and verify the resulting runtime before media E2E.
+
+
+# 42. Persistent Active Storage remediation — 2026-10-02
+
+The previously isolated Rails Active Storage → OCI probe was followed by the controlled WEB and WORKER runtime change.
+
+## Evidence preservation
+
+Before replacing the WEB runtime, the recoverable local Active Storage files were copied to:
+
+`~/wise-support-storage-backup-20261002/`
+
+The backup contains the three previously identified 8-byte diagnostic objects. They were preserved for forensic correlation only and were **not** copied into OCI Object Storage.
+
+The prior WEB and WORKER container definitions were also preserved for rollback.
+
+## WEB runtime change
+
+The previous WEB container was preserved as:
+
+`wise-support-chat-web-disk-20261002`
+
+A replacement WEB container was created from the same immutable image:
+
+`ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176`
+
+with the OCI S3-compatible Active Storage configuration.
+
+The replacement started successfully on `127.0.0.1:3000`.
+
+Live Rails verification:
+
+```
+service=s3_compatible
+class=ActiveStorage::Service::S3Service
+```
+
+A live Rails Active Storage probe from the running WEB container then successfully performed PUT, EXIST, DOWNLOAD and DELETE, with deletion verified.
+
+## WORKER runtime change
+
+The previous WORKER container was preserved as:
+
+`wise-support-chat-worker-disk-20261002`
+
+A replacement WORKER was created from the same immutable image and the same OCI Active Storage configuration.
+
+The replacement started successfully and Sidekiq resumed normal scheduled/background job processing.
+
+Live Rails verification:
+
+```
+service=s3_compatible
+class=ActiveStorage::Service::S3Service
+```
+
+## Current storage topology
+
+The runtime configuration is now:
+
+```
+                 OCI Object Storage
+          oracle-oci-bucket-chatwoot-wisehealth
+                         |
+                Active Storage S3Service
+                         |
+             +-----------+-----------+
+             |                       |
+        Chatwoot WEB           Chatwoot WORKER
+        Rails/Puma                 Sidekiq
+```
+
+The storage backend change is now persistent in the recreated WEB and WORKER containers.
+
+## Rollback state retained
+
+The old WEB and WORKER containers remain preserved and should not be removed until the attachment/media regression is complete.
+
+No PostgreSQL, Redis, Nginx, Telegram webhook, or bot configuration was changed as part of this storage remediation.
+
+## Current status
+
+**Storage infrastructure remediation: PASS.**
+
+The remaining proof is application-level media E2E:
+
+- Chatwoot → Telegram document;
+- Chatwoot → Telegram Rx image;
+- Patient → Chatwoot image/document;
+- Telegram two-way text regression after the storage change.
+
+Credential hygiene remains outstanding: the OCI secret key used during setup was exposed during diagnostics and must be rotated before treating the environment as production-safe. The secret itself is intentionally not recorded here.
