@@ -178,3 +178,61 @@ Keep these preserved containers until media regression is complete:
 ### Security follow-up
 
 The OCI secret key used during diagnostics must be rotated before production use; no secret is recorded in this document.
+
+
+## 2026-10-02 media E2E results — post-OCI storage remediation
+
+The first real attachment E2E was performed after switching WEB + WORKER to the shared OCI S3-compatible Active Storage backend.
+
+### Chatwoot → Telegram — document attachment
+
+**Result: PASS for delivery.**
+
+A support-rep reply containing a `.txt` document was delivered successfully to the Telegram patient. The Telegram client displayed the document attachment.
+
+### Chatwoot → Telegram — image attachment
+
+**Result: PASS for delivery.**
+
+A support-rep reply containing an image was delivered successfully to the Telegram patient and was visible in the patient Telegram conversation.
+
+These are material improvements over the pre-remediation state, where outbound document and image attachments failed/red and did not reach Telegram.
+
+### Telegram → Chatwoot — document attachment
+
+**Result: PARTIAL / FAIL for attachment retrieval.**
+
+A Telegram patient sent a document attachment and the message reached the Chatwoot portal. However, opening/downloading the attachment from Chatwoot failed.
+
+A direct inspection of the generated OCI object URL returned an OCI `NoSuchKey` response stating that the requested object key was not found in bucket `oracle-oci-bucket-chatwoot-wisehealth`.
+
+This proves the referenced object was not available at that requested key at retrieval time. The exact creation/upload path still needs to be traced.
+
+### Telegram → Chatwoot — image attachment
+
+**Result: PARTIAL / FAIL for attachment retrieval.**
+
+A Telegram patient sent an image attachment and the message reached the Chatwoot portal, but the attachment could not be downloaded/rendered successfully in Chatwoot.
+
+### Duplicate/repeated inbound attachment messages
+
+The same inbound attachment message appeared multiple times in the Chatwoot conversation. In one observed case, a single Telegram document message resulted in three visible copies. Subsequent refreshes of the **Mine** inbox appeared to increase the number of visible attachment messages further; the same pattern was observed for the image attachment.
+
+This is not yet classified as a frontend-only rendering issue or a duplicate Telegram update issue. It requires correlation of Telegram update IDs, Chatwoot webhook/Sidekiq processing, persisted message IDs/timestamps, conversation API responses before and after refresh, and browser/network requests during inbox refresh.
+
+Do not alter or clean up records until the source of duplication is established.
+
+### Updated attachment matrix
+
+| Direction | Text | Image/Rx | Document |
+|---|---|---|---|
+| Patient → Chatwoot | PASS baseline | received but attachment retrieval FAIL | received but attachment retrieval FAIL |
+| Chatwoot → Patient | PASS baseline | PASS delivery | PASS delivery |
+
+### Current conclusion
+
+The OCI shared Active Storage change has resolved the original outbound attachment delivery failure sufficiently to prove Chatwoot → Telegram document and image delivery.
+
+It did not yet establish bidirectional attachment readiness. The remaining blocker is now concentrated on the Telegram → Chatwoot inbound attachment persistence/retrieval path, together with the newly observed duplicate-message behaviour.
+
+The two-way text path remains the regression baseline.
