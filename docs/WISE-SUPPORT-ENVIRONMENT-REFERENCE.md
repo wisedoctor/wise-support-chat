@@ -777,3 +777,14 @@ curl "https://api.telegram.org/bot$CHATWOOT_POC_BOT_TOKEN/getWebhookInfo"
 ```
 
 This check/set/check sequence is the required operational pattern before the live Chatwoot Telegram dress rehearsal.
+
+
+## Dress-rehearsal change history
+
+For the chronological record of the environment changes made during the hosted Chatwoot + Telegram dress rehearsal, see:
+
+`docs/WISE-SUPPORT-DRESS-REHEARSAL-ENVIRONMENT-CHANGELOG-2026-10-02.md`
+
+That companion document records the Render validation attempt/archival, OCI VM and networking setup, Docker/runtime installation, GHCR image selection, PostgreSQL/pgvector migration, Redis, Chatwoot Web/Sidekiq bootstrap, Nginx/HTTPS/SELinux/firewall changes, Telegram webhook and Chatwoot channel onboarding, auto-assignment diagnostics, and attachment/welcome-message validation.
+
+Use the present document for the **current environment reference**; use the companion changelog when reconstructing **what was actually changed during the dress rehearsal and which changes are temporary validation assumptions**.
