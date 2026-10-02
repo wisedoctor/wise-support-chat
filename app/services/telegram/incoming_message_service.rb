@@ -105,6 +105,7 @@ class Telegram::IncomingMessageService
 
     @message = message
     process_message_attachments
+    @message.save!
 
     Rails.logger.info(
       "Telegram duplicate event repaired existing message: inbox_id=#{inbox.id} message_id=#{message.id} " \
