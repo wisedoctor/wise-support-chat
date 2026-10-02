@@ -1,7 +1,8 @@
 # WISE Support Pilot Prep Backlog
 
 **Status:** Working backlog for Telegram + Chatwoot dress rehearsal and production-entry-point preparation  
-**Updated:** 2026-10-02
+**Updated:** 2026-10-02  
+**Latest checkpoint:** WISE Health Website Inbox configured; native `/support` integration is the next implementation slice
 
 This backlog captures the pilot-prep work identified during the OCI-hosted Chatwoot dress rehearsal and the wider WISE context-aware entry-point review.
 
@@ -265,7 +266,61 @@ The text-only path should become a regression test while attachment and routing 
 
 ---
 
-## 11. Pilot entry-point rehearsal matrix
+## 11. Native WISE Health `/support` web-chat integration
+
+**Priority:** High  
+**Phase:** Current implementation slice  
+**Status:** Inbox/configuration complete; application integration next
+
+A dedicated Chatwoot Website Inbox has been configured for the WISE Health portal:
+
+- Inbox: `WISE Health™ Support`
+- Domain: `https://wisehealth.in`
+- Welcome heading: `WISE Health™ Support`
+- Friendly sender identity: WISE Health
+- Collaborators: configured
+- Widget preview: verified
+- Website token: generated and kept out of Git/documentation
+
+Next validation path:
+
+```
+https://wisehealth.in/support
+        ↓
+native WISE Health Support page
+        ↓
+Start Support
+        ↓
+Chatwoot Website Inbox
+        ↓
+WISE Health™ Support
+        ↓
+Support Rep
+        ↓
+browser reply
+```
+
+Implementation boundary:
+
+- `quick-chat-landing` owns the native `/support` page, WISE Health presentation/navigation/copy and the support-launch interaction.
+- `wise-support-chat` owns Chatwoot/provider-specific Website Inbox configuration and implementation concerns.
+- Do not commit the Chatwoot website token.
+- Do not merge the earlier provider-specific `ChatwootWidget.tsx` experiment wholesale into the core application.
+- Keep the Telegram POC path unchanged while web-chat is introduced.
+
+Acceptance checks:
+
+1. native `/support` page loads;
+2. Start Support opens the intended web chat;
+3. conversation lands in `WISE Health™ Support`;
+4. configured collaborator/assignment behaviour is observed;
+5. Support Rep reply reaches browser;
+6. conversation persists across refresh/re-entry;
+7. Telegram two-way text regression remains green.
+
+---
+
+## 12. Pilot entry-point rehearsal matrix
 
 **Priority:** High  
 **Phase:** Pilot preparation  
@@ -295,7 +350,7 @@ This becomes the practical validation of the context-aware router concept.
 
 ---
 
-## 12. Production entry-point audit
+## 13. Production entry-point audit
 
 **Priority:** High  
 **Phase:** Current workstream  
@@ -317,7 +372,7 @@ For each entry point determine:
 
 ---
 
-## 13. Final patient-facing Telegram bot identity
+## 14. Final patient-facing Telegram bot identity
 
 **Priority:** Medium  
 **Phase:** Production hardening  
@@ -342,13 +397,14 @@ Keep credentials, webhook ownership, onboarding and documentation strictly separ
 - POC CTA rehearsal from a second Android device.
 
 ### Next pilot-prep work
-1. Resolve/understand assignment and inbox/conversation operating behaviour.
-2. Investigate attachment/media failures.
-3. Establish the pilot attachment capability gate.
-4. Capture welcome-message and /start UX requirements.
-5. Rehearse multiple entry points and context handoff.
-6. Complete production entry-point audit.
-7. Only then decide production code migration and final patient-facing routing changes.
+1. Complete the native `wisehealth.in/support` web-chat integration and prove browser ↔ Chatwoot Website Inbox E2E.
+2. Resolve/understand assignment and inbox/conversation operating behaviour across Telegram and Website Inbox.
+3. Investigate attachment/media failures.
+4. Establish the pilot attachment capability gate.
+5. Capture welcome-message and `/start` UX requirements for Telegram.
+6. Rehearse multiple entry points and context handoff.
+7. Complete production entry-point audit.
+8. Only then decide production code migration and final patient-facing routing changes.
 
 ### Deferred architecture
 - Context-aware WISE intent router implementation.
@@ -381,7 +437,7 @@ The router and CTA work should make the journey smarter without turning WISE Sup
 
 ---
 
-## 14. Pilot Prep → RBAC / Initial Hand-off Workstream
+## 15. Pilot Prep → RBAC / Initial Hand-off Workstream
 
 **Priority:** High  
 **Phase:** Immediate next milestone after current smoke-test closure  
