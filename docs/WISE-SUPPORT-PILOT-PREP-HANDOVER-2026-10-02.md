@@ -679,3 +679,74 @@ After recreation, verify both WEB and WORKER report `ActiveStorage::Service::S3S
 7. Patient → Chatwoot attachment validation.
 
 Do not change Telegram webhook configuration as part of this storage remediation.
+
+
+## 24. Persistent Active Storage remediation checkpoint — 2026-10-02
+
+The controlled storage remediation has now been completed at the runtime-configuration level.
+
+### Evidence preserved
+
+Before the WEB replacement, the three recoverable local diagnostic objects were copied to the VM backup location:
+
+`~/wise-support-storage-backup-20261002/`
+
+They remain forensic evidence only and were not copied into the OCI bucket.
+
+The prior WEB and WORKER containers were preserved as:
+
+- `wise-support-chat-web-disk-20261002`
+- `wise-support-chat-worker-disk-20261002`
+
+### Live WEB verification — PASS
+
+The replacement WEB container uses:
+
+```
+ACTIVE_STORAGE_SERVICE=s3_compatible
+STORAGE_REGION=ap-hyderabad-1
+STORAGE_BUCKET_NAME=oracle-oci-bucket-chatwoot-wisehealth
+STORAGE_ENDPOINT=https://ax3kknx0qqfm.compat.objectstorage.ap-hyderabad-1.oraclecloud.com
+STORAGE_FORCE_PATH_STYLE=true
+```
+
+Secret values are not recorded.
+
+Rails reports:
+
+```
+service=s3_compatible
+class=ActiveStorage::Service::S3Service
+```
+
+A live Rails probe from WEB successfully uploaded, read/downloaded and deleted an object; deletion was verified.
+
+### Live WORKER verification — PASS
+
+The replacement WORKER uses the same Active Storage service configuration and reports:
+
+```
+service=s3_compatible
+class=ActiveStorage::Service::S3Service
+```
+
+Sidekiq started normally and resumed scheduled/background processing.
+
+### Important current distinction
+
+The storage remediation is **technically configured and verified**, but the attachment capability is **not yet marked proven**. The next message/test cycle will establish whether the original Chatwoot → Telegram document/Rx-image failures are resolved end-to-end.
+
+### Required next regression order
+
+1. Chatwoot portal/runtime health.
+2. Telegram two-way text regression.
+3. Chatwoot → Telegram document attachment.
+4. Chatwoot → Telegram Rx-image attachment.
+5. Patient → Chatwoot attachment validation.
+6. Inspect WEB/WORKER logs only where a media test fails.
+
+Do not alter Telegram webhook ownership during this validation.
+
+### Security follow-up
+
+The OCI secret key used during the remediation was exposed during diagnostics. Rotate it after functional validation, then update WEB/WORKER configuration and re-verify storage access. The secret is not recorded in this handover.
