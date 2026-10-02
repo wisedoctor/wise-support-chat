@@ -13,6 +13,12 @@ class Telegram::IncomingMessageService
 
     set_contact
     update_contact_avatar
+
+    if existing_message = find_existing_message
+      repair_existing_message(existing_message)
+      return
+    end
+
     set_conversation
     # TODO: Since the recent Telegram Business update, we need to explicitly mark messages as read using an additional request.
     # Otherwise, the client will see their messages as unread.
@@ -74,6 +80,35 @@ class Telegram::IncomingMessageService
       contact_inbox_id: @contact_inbox.id,
       additional_attributes: conversation_additional_attributes
     }
+  end
+
+  def find_existing_message
+    @contact_inbox.conversations
+      .joins(:messages)
+      .where(messages: { source_id: telegram_params_message_id.to_s })
+      .order('messages.created_at ASC')
+      .first
+      &.messages
+      &.find_by(source_id: telegram_params_message_id.to_s)
+  end
+
+  def repair_existing_message(message)
+    return unless message_params? && file.present?
+
+    missing_attachments = message.attachments.select do |attachment|
+      !attachment.blob.service.exist?(attachment.blob.key)
+    end
+
+    missing_attachments.each(&:destroy!)
+    return if missing_attachments.empty?
+
+    @message = message
+    process_message_attachments
+
+    Rails.logger.info(
+      "Telegram duplicate event repaired existing message: inbox_id=#{inbox.id} message_id=#{message.id} " \
+      "source_id=#{telegram_params_message_id} repaired_attachments=#{missing_attachments.size}"
+    )
   end
 
   def set_conversation
