@@ -1307,3 +1307,116 @@ Controlled production migration
 ```
 
 Do not continue changing the rehearsal environment merely for experimentation once a pilot-prep item has enough evidence to proceed to the next milestone.
+
+
+---
+
+# 39. Active Storage / attachment infrastructure diagnosis — 2026-10-02
+
+The attachment/media investigation was extended before making any storage or container changes.
+
+## Current Docker storage configuration
+
+The following inspection commands were run against the live rehearsal containers:
+
+```
+docker inspect wise-support-chat-web --format '{{json .Mounts}}'
+→ []
+
+docker inspect wise-support-chat-worker --format '{{json .Mounts}}'
+→ []
+```
+
+Therefore neither Chatwoot Web nor Sidekiq Worker currently has a Docker volume/bind mount attached to its container configuration.
+
+## Current WEB filesystem
+
+`/app/storage` currently contains exactly three files:
+
+```
+/app/storage/bd/2m/bd2m557vhad2hqf22bqf14vspp4o
+/app/storage/ro/o8/roo8jmr0z2bk9q47yqx30bgjbghs
+/app/storage/59/8k/598kn56ozb7skhrsu5dm7r7p9m71
+```
+
+Each is:
+
+- 8 bytes;
+- ASCII text;
+- no line terminator;
+- owned by root;
+- identical SHA-256:
+  `1d5f671fbc083af9a0ac801f24b93569fc6f9702af3fceee0ea7ca1a0018f001`.
+
+The timestamps and blob keys correspond to the three recent `patient_guidance_test_doc.txt` test uploads.
+
+The WORKER filesystem has no corresponding Active Storage files.
+
+## Database/filesystem mismatch observed
+
+PostgreSQL contains additional Active Storage blob metadata for older attachments, while the current WEB filesystem does not contain all of those referenced objects.
+
+The Rails logs already demonstrated an `ActiveStorage::FileNotFoundError` while attempting to read a DB-referenced blob/representation.
+
+Separately, the logs showed successful Active Storage redirect handling for at least one `file_1.jpg` request, so the evidence is not that all attachment storage is broken. The current state is **partial/incomplete filesystem availability**.
+
+## Operational conclusion
+
+Two distinct infrastructure facts are now established:
+
+1. **WEB and WORKER do not share Active Storage storage.**
+2. **WEB's current local Active Storage filesystem is incomplete relative to PostgreSQL blob metadata.**
+
+Therefore the next storage change must not simply mount a new empty shared volume over `/app/storage`.
+
+The safe sequence is:
+
+```
+preserve/correlate existing files
+        ↓
+establish persistent shared Active Storage backend
+        ↓
+mount identically into WEB + WORKER
+        ↓
+verify existing and new attachment reads
+        ↓
+rerun Telegram media E2E
+```
+
+No storage volume replacement, container recreation, or destructive cleanup was performed during this diagnostic step.
+
+Attachment/media remains an open pilot-prep item.
+
+---
+
+# 40. E2E smoke-test checkpoint — 2026-10-02
+
+The stable-hostname migration and subsequent validation are now part of the rehearsal smoke-test evidence.
+
+### Proven
+
+- `support.wisehealth.in` resolves to the OCI validation ingress.
+- Trusted Let's Encrypt TLS is active.
+- Chatwoot portal is reachable through `https://support.wisehealth.in`.
+- POC Telegram webhook uses the stable hostname rather than the raw IP.
+- Telegram reports no custom certificate for the hostname webhook.
+- Pending Telegram updates were cleared after migration.
+- Patient Telegram → Chatwoot inbound text works.
+- Support Rep → patient Telegram outbound text works.
+- The two-way text path was rerun after the hostname migration and passed.
+- A new-patient medicine-support scenario was exercised.
+- Chatwoot automatic assignment was observed assigning a conversation through its Default Policy when agent presence/availability was active.
+- WISE Health Website Inbox is configured and its widget preview has been verified.
+
+### Still open
+
+- Chatwoot → Telegram document attachment.
+- Chatwoot → Telegram Rx image.
+- Patient → Chatwoot image/document validation.
+- Shared/persistent Active Storage.
+- Clean, repeatable new-conversation assignment test.
+- Native `wisehealth.in/support` browser E2E.
+- Final RBAC and operational hand-off.
+
+The two-way text Telegram path is the **regression baseline**. Attachment/media changes must not regress this path.
+
