@@ -14,6 +14,12 @@ class Telegram::IncomingMessageService
     set_contact
     update_contact_avatar
     set_conversation
+
+    if support_start_command?
+      create_support_welcome_message
+      return
+    end
+
     # TODO: Since the recent Telegram Business update, we need to explicitly mark messages as read using an additional request.
     # Otherwise, the client will see their messages as unread.
     # Chatwoot defines a 'read' status in its enum but does not currently update this status for Telegram conversations.
@@ -36,6 +42,26 @@ class Telegram::IncomingMessageService
   end
 
   private
+
+  def support_start_command?
+    message_content = telegram_params_message_content.to_s.strip
+    message_content.match?(%r{\A/start(?:\s+support)?\z}i)
+  end
+
+  def create_support_welcome_message
+    source_id = "telegram_start:#{telegram_params_message_id}"
+    existing_message = @conversation.messages.find_by(source_id: source_id)
+    return if existing_message
+
+    @conversation.messages.create!(
+      content: "Welcome to WISE Support 👋\nTell us what you need help with. If this is about an existing WISE request, please share the request/reference number if you have it.",
+      account_id: @inbox.account_id,
+      inbox_id: @inbox.id,
+      message_type: :outgoing,
+      sender: nil,
+      source_id: source_id
+    )
+  end
 
   def set_contact
     contact_inbox = ::ContactInboxWithContactBuilder.new(
