@@ -97,7 +97,7 @@ class Telegram::IncomingMessageService
     return unless message_params? && file.present?
 
     missing_attachments = message.attachments.select do |attachment|
-      !attachment.blob.service.exist?(attachment.blob.key)
+      !attachment.file.attached? || !attachment.file.blob.service.exist?(attachment.file.blob.key)
     end
 
     missing_attachments.each(&:destroy!)

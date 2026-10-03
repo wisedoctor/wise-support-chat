@@ -363,9 +363,9 @@ describe Telegram::IncomingMessageService do
 
         described_class.new(inbox: telegram_channel.inbox, params: params).perform
         message = telegram_channel.inbox.messages.last
-        original_key = message.attachments.first.blob.key
-        message.attachments.first.blob.service.delete(original_key)
-        expect(message.attachments.first.blob.service.exist?(original_key)).to be(false)
+        original_key = message.attachments.first.file.blob.key
+        message.attachments.first.file.blob.service.delete(original_key)
+        expect(message.attachments.first.file.blob.service.exist?(original_key)).to be(false)
 
         expect {
           described_class.new(inbox: telegram_channel.inbox, params: params).perform
@@ -373,8 +373,8 @@ describe Telegram::IncomingMessageService do
 
         message.reload
         expect(message.attachments.count).to eq(1)
-        expect(message.attachments.first.blob.service.exist?(message.attachments.first.blob.key)).to be(true)
-        expect(message.attachments.first.blob.key).not_to eq(original_key)
+        expect(message.attachments.first.file.blob.service.exist?(message.attachments.first.file.blob.key)).to be(true)
+        expect(message.attachments.first.file.blob.key).not_to eq(original_key)
       end
     end
 
