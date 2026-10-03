@@ -236,3 +236,56 @@ The OCI shared Active Storage change has resolved the original outbound attachme
 It did not yet establish bidirectional attachment readiness. The remaining blocker is now concentrated on the Telegram → Chatwoot inbound attachment persistence/retrieval path, together with the newly observed duplicate-message behaviour.
 
 The two-way text path remains the regression baseline.
+
+
+## 2026-10-03 Telegram retry/idempotency validation
+
+The duplicate inbound attachment investigation produced a narrow application-level retry/idempotency fix.
+
+### Source checkpoint
+
+- branch: `fix/telegram-retry-idempotency`
+- HEAD: `a8e85786f`
+- latest commit: `fix(telegram): use attachment file blob for retry repair`
+
+The implementation checks for an existing Telegram message using the Telegram `message_id` / Chatwoot `source_id`. When an existing message is found, it repairs missing attachment state rather than creating another message.
+
+### Local focused-test result
+
+The test-capable image `wise-support-chat:test-retry-idempotency` was used with an isolated `chatwoot_test` database.
+
+Result:
+
+```
+35 examples, 3 failures
+```
+
+The two attachment-test failures caused by the earlier incorrect attachment API reference are resolved. The remaining three failures are unrelated conversation-selection cases already known from the baseline suite.
+
+Therefore the retry/idempotency scenarios are locally validated without introducing a new failure in this focused suite.
+
+### OCI rollout candidate
+
+Published immutable image:
+
+`ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`
+
+Rollback baseline:
+
+`ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176`
+
+### Next validation
+
+The fix is not yet marked production/pilot complete. The next evidence must come from the actual OCI rehearsal:
+
+- WEB + WORKER replacement only;
+- preserve OCI S3-compatible Active Storage configuration;
+- preserve stable hostname and current Telegram webhook;
+- rerun two-way text regression;
+- send one fresh inbound document and/or image;
+- verify one persisted Chatwoot message per Telegram message;
+- verify attachment retrieval;
+- exercise a repeated/retried update and verify idempotent repair;
+- retain rollback image until the result is recorded.
+
+The attachment gate remains open until inbound media retrieval and duplicate-message behaviour are both proven.
