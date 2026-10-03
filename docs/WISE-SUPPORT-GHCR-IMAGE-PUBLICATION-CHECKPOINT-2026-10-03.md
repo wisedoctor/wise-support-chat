@@ -167,3 +167,26 @@ The OCI storage secret used during earlier diagnostics was exposed during the re
 **Controlled pilot rollout: PENDING**
 
 This checkpoint intentionally separates image publication from runtime deployment so that the OCI rehearsal remains rollback-safe.
+
+
+## Local validation completed — 2026-10-03
+
+The published candidate was traced back to branch `fix/telegram-retry-idempotency`, HEAD `a8e85786f`.
+
+Focused RSpec was executed using the test-capable image containing the corrected source:
+
+`wise-support-chat:test-retry-idempotency`
+
+Result:
+
+```
+35 examples, 3 failures
+```
+
+The two failures caused by the earlier incorrect `attachment.blob` API are resolved. The remaining three failures are the pre-existing conversation-selection cases and are outside the retry/idempotency change.
+
+The immutable candidate remains the controlled OCI rollout target:
+
+`ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`
+
+The image is therefore **locally validated for the intended retry/idempotency slice; OCI runtime validation remains pending**.
