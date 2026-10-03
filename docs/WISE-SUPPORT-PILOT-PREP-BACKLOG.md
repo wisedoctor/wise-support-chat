@@ -560,3 +560,48 @@ Investigate update-id handling, webhook/Sidekiq processing, DB message persisten
 | Chatwoot → Patient | PASS | PASS | PASS |
 
 The pilot attachment gate therefore remains open, but the original outbound-storage problem is no longer the primary blocker.
+
+
+## 17. Telegram retry/idempotency checkpoint — 2026-10-03
+
+**Priority:** High  
+**Phase:** Pilot blocker / attachment-media reliability  
+**Status:** Application fix locally validated; OCI runtime validation pending
+
+The inbound attachment duplicate-message investigation produced a narrow retry/idempotency fix.
+
+### Validated
+
+- Branch: `fix/telegram-retry-idempotency`
+- HEAD: `a8e85786f`
+- Existing Telegram `message_id` / Chatwoot `source_id` is used to detect an already-persisted message.
+- A repeated event repairs missing attachment state on the existing message rather than creating another message.
+- Test-capable image containing the corrected code: `wise-support-chat:test-retry-idempotency`.
+- Focused RSpec: **35 examples, 3 failures**.
+- The two attachment-test failures caused by the incorrect `attachment.blob` API are resolved.
+- The remaining three failures are the known, unrelated conversation-selection examples and remain out of scope.
+
+### OCI candidate
+
+Published immutable candidate:
+
+`ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`
+
+Rollback baseline remains:
+
+`ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176`
+
+### Remaining validation
+
+The fix is not yet marked closed. Controlled OCI validation must:
+
+1. replace WEB + WORKER only;
+2. preserve OCI Active Storage, stable HTTPS ingress and current Telegram webhook;
+3. rerun two-way text regression;
+4. run fresh inbound document/image tests;
+5. verify one persisted Chatwoot message per Telegram message;
+6. exercise a repeated/retried event;
+7. verify idempotent repair and attachment retrieval;
+8. retain the previous image for rollback until the regression is complete.
+
+Do not change the three unrelated conversation-selection behaviours as part of this workstream.
