@@ -236,3 +236,39 @@ The OCI shared Active Storage change has resolved the original outbound attachme
 It did not yet establish bidirectional attachment readiness. The remaining blocker is now concentrated on the Telegram → Chatwoot inbound attachment persistence/retrieval path, together with the newly observed duplicate-message behaviour.
 
 The two-way text path remains the regression baseline.
+
+
+
+## Telegram inbound retry / duplicate-message resolution checkpoint — 2026-10-02
+
+The duplicate inbound attachment investigation now has a concrete causal explanation and application fix.
+
+Root cause chain:
+- one Telegram update was received and one Sidekiq job was enqueued;
+- the first attempt could persist the message and then fail in the post-create callback while generating attachment URL data;
+- the immediate trigger was the missing worker FRONTEND_URL;
+- Sidekiq retried the same event;
+- Telegram::IncomingMessageService had no retry/idempotency lookup;
+- messages.source_id was indexed but not unique;
+- the retry therefore created a second message with the same Telegram message_id.
+
+The worker did not restart during the observed event.
+
+Definite fix:
+- branch: fix/telegram-retry-idempotency;
+- draft PR: #1 — fix(telegram): make inbound retries idempotent;
+- existing Telegram message is reused within the relevant contact/inbox scope;
+- intact attachment is treated as already processed;
+- missing attachment storage is repaired on the existing message;
+- regression specs cover text dedupe, intact attachment dedupe and missing-object repair.
+
+Current status:
+- cause established: YES;
+- fix implemented: YES;
+- merged to develop: NO;
+- CI/test suite completed: NOT YET;
+- OCI rehearsal deployment: NOT YET;
+- inbound media E2E after fix: NOT YET.
+
+Attachment/media remains open until controlled validation is complete. Two-way Telegram text remains the regression baseline.
+

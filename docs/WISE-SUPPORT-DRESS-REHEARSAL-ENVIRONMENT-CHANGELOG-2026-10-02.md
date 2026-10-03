@@ -1631,3 +1631,74 @@ This is a separate investigation track. Current evidence does not yet establish 
 - final attachment capability gate.
 
 The proven two-way text path remains the regression baseline.
+
+
+
+# 44. Telegram inbound duplicate-message forensic resolution — 2026-10-02
+
+The duplicate inbound attachment behaviour observed after the OCI Active Storage remediation has now been traced to the Telegram/Sidekiq retry path.
+
+## Evidence
+
+For the affected Telegram event:
+- one webhook update was received and one Webhooks::TelegramEventsJob was enqueued;
+- the same ActiveJob was subsequently performed;
+- the worker remained running and did not restart;
+- database inspection showed successive Chatwoot messages with the same Telegram source_id;
+- the later message completed the attachment upload successfully.
+
+Earlier diagnostic logs captured the underlying exception path through Telegram::IncomingMessageService → Message#after_create_commit → Message#dispatch_create_events → attachment URL generation / Attachment#file_url → Missing host to link to!.
+
+The immediate runtime cause was the missing worker FRONTEND_URL. That configuration has since been corrected and verified.
+
+## Why the duplicate occurred
+
+The Telegram inbound service previously had no retry/idempotency handling. messages.source_id is indexed but not unique.
+
+Resulting sequence:
+
+Telegram event
+  ↓
+first Sidekiq attempt
+  ↓
+Chatwoot message persisted
+  ↓
+post-create callback raises
+  ↓
+Sidekiq retries same event
+  ↓
+Telegram service creates second message
+  ↓
+attachment upload succeeds
+
+This matches the observed failed first copy followed by the successful second copy.
+
+## Definite application fix
+
+Implemented in app/services/telegram/incoming_message_service.rb on branch fix/telegram-retry-idempotency.
+
+The service now finds an existing Telegram message with the same Telegram message_id in the relevant contact/inbox conversation scope before creating a new message.
+
+If found:
+- text → no-op;
+- intact attachment → no-op;
+- missing attachment storage object → repair the existing message and persist the replacement attachment.
+
+Regression coverage was added for text dedupe, intact attachment dedupe and missing-object repair.
+
+No global unique index was added to messages.source_id.
+
+## GitHub state
+
+Draft PR #1: fix(telegram): make inbound retries idempotent.
+
+The branch contains the implementation and regression specs. The PR remains draft while tests and controlled rehearsal validation are performed.
+
+No OCI runtime deployment has been made from this branch.
+
+## Operational conclusion
+
+The duplicate-message behaviour should no longer be treated as an unexplained Telegram/Chatwoot duplication issue. The causal chain is sufficiently established to proceed to test validation and controlled E2E verification.
+
+The known-good two-way text E2E remains the regression baseline.
+
