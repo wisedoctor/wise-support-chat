@@ -61,6 +61,27 @@ describe Telegram::IncomingMessageService do
       end
     end
 
+    context 'when /start support is received' do
+      it 'creates a WISE welcome message instead of storing the technical start command' do
+        params = {
+          'update_id' => 2_342_342_343_242,
+          'message' => { 'text' => '/start support' }.merge(message_params)
+        }.with_indifferent_access
+
+        described_class.new(inbox: telegram_channel.inbox, params: params).perform
+
+        message = telegram_channel.inbox.messages.first
+        expect(telegram_channel.inbox.conversations.count).to eq(1)
+        expect(telegram_channel.inbox.messages.count).to eq(1)
+        expect(message.message_type).to eq('outgoing')
+        expect(message.sender).to be_nil
+        expect(message.source_id).to eq('telegram_start:1')
+        expect(message.content).to eq(
+          "Welcome to WISE Support 👋\nTell us what you need help with. If this is about an existing WISE request, please share the request/reference number if you have it."
+        )
+      end
+    end
+
     context 'when valid caption params' do
       it 'creates appropriate conversations, message and contacts' do
         params = {
