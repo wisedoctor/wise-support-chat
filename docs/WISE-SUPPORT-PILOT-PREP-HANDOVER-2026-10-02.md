@@ -799,3 +799,78 @@ The attachment gate remains **OPEN**, but its scope has changed:
 - inbound duplicate-message behaviour: investigation required.
 
 Telegram two-way text remains the regression baseline and must continue to pass during this investigation.
+
+
+## 26. Telegram retry/idempotency validation checkpoint — 2026-10-03
+
+The Telegram duplicate-message investigation progressed to a narrow application-level retry/idempotency fix.
+
+### Source state
+
+- Branch: `fix/telegram-retry-idempotency`
+- HEAD: `a8e85786f`
+- Remote branch: `origin/fix/telegram-retry-idempotency`
+- Latest commit: `fix(telegram): use attachment file blob for retry repair`
+
+The fix is deliberately narrow. On an inbound Telegram event, the service now checks for an existing message using the Telegram `message_id` stored as `source_id`. If an existing message is found, it repairs missing attachment state where necessary instead of creating another message.
+
+### Local validation
+
+A test-capable image containing the corrected code was validated:
+
+`wise-support-chat:test-retry-idempotency`
+
+Focused RSpec result:
+
+```
+35 examples, 3 failures
+```
+
+The two attachment-related failures that had previously been caused by the incorrect test/model API (`attachment.blob` rather than `attachment.file.blob`) are now gone.
+
+The remaining three failures are the pre-existing conversation-selection examples:
+
+- `lock_to_single_conversation=false`, all previous conversations resolved → expected a new conversation;
+- `lock_to_single_conversation=false`, unresolved conversation exists → expected reuse;
+- `lock_to_single_conversation=true`, resolved conversation exists → expected reuse.
+
+These remain outside the scope of the retry/idempotency change and must not be altered as part of this rollout.
+
+### Image publication
+
+The corrected production-style image was published to GHCR as:
+
+`ghcr.io/wisedoctor/wise-support-chat:sha-a8e85786`
+
+Verified registry digest:
+
+`sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`
+
+Immutable deployment reference:
+
+`ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`
+
+The prior rehearsal image remains the rollback baseline:
+
+`ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176`
+
+### Controlled OCI rollout — next
+
+Do not change PostgreSQL, Redis, Nginx, DNS/TLS, Telegram webhook ownership, or either Telegram bot.
+
+Replace WEB + WORKER together with the immutable candidate image, preserving the existing runtime configuration including OCI Active Storage and `FRONTEND_URL=https://support.wisehealth.in`.
+
+Required validation order:
+
+1. preserve the current WEB/WORKER image references for rollback;
+2. pull the immutable GHCR digest;
+3. replace WEB and WORKER only;
+4. verify container health and Rails/Sidekiq logs;
+5. verify the existing OCI Active Storage configuration;
+6. rerun two-way Telegram text regression;
+7. run a fresh inbound attachment test specifically targeting duplicate/retry behaviour;
+8. verify that a repeated Telegram update does not create a second Chatwoot message;
+9. verify missing inbound attachment state is repaired when the same event is retried;
+10. retain the previous image until the media/idempotency regression is complete.
+
+Do not merge the branch or treat the OCI rollout as complete until this controlled runtime validation is recorded.
