@@ -1631,3 +1631,71 @@ This is a separate investigation track. Current evidence does not yet establish 
 - final attachment capability gate.
 
 The proven two-way text path remains the regression baseline.
+
+
+# 44. Telegram retry/idempotency application checkpoint — 2026-10-03
+
+The inbound attachment duplication investigation has now reached a controlled application-fix checkpoint.
+
+## Source
+
+- Branch: `fix/telegram-retry-idempotency`
+- HEAD: `a8e85786f`
+- Latest commit: `fix(telegram): use attachment file blob for retry repair`
+
+The implementation detects an existing Telegram message using the Telegram `message_id` stored as Chatwoot `source_id`. If the event is retried, the service repairs missing attachment state on the existing message instead of creating a second message.
+
+## Local validation
+
+The corrected source was verified in the test-capable image:
+
+`wise-support-chat:test-retry-idempotency`
+
+Focused RSpec result:
+
+```
+35 examples, 3 failures
+```
+
+The two attachment-related failures previously caused by the incorrect `attachment.blob` test/model API are no longer present.
+
+The remaining three failures are the existing conversation-selection examples and are explicitly outside this fix's scope.
+
+## Published candidate
+
+Immutable GHCR digest:
+
+`sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`
+
+Deployment reference:
+
+`ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`
+
+Rollback image:
+
+`ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176`
+
+## Next controlled change
+
+Only WEB and WORKER should change for the OCI validation. Preserve:
+
+- PostgreSQL;
+- Redis;
+- Nginx;
+- DNS/TLS;
+- Telegram webhook ownership;
+- both Telegram bot identities;
+- OCI Active Storage configuration;
+- stable hostname ingress.
+
+Required regression order:
+
+1. container health;
+2. Active Storage runtime verification;
+3. two-way Telegram text;
+4. fresh inbound attachment;
+5. duplicate/retry scenario;
+6. attachment retrieval;
+7. rollback readiness.
+
+No production-safe or pilot-ready conclusion is recorded until the OCI runtime result is captured.
