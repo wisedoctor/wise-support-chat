@@ -1,6 +1,6 @@
 # WISE Support — Telegram Welcome / /start UX Checkpoint — 2026-10-03
 
-**Status:** Investigation complete; configuration/code change deferred pending one controlled UX test
+**Status:** Narrow implementation candidate added; runtime validation pending
 **Environment:** OCI hosted dress rehearsal
 **POC bot:** @wise_chatwoot_poc_bot
 **Chatwoot:** self-hosted v4.14.2 lineage
@@ -27,7 +27,7 @@ The inbound path is:
 
 The service accepts the incoming Telegram message as normal message content. No code change is required merely to support a normal /start message.
 
-Therefore, the next step should be a configuration/client-behaviour test, not a code refactor.
+The controlled client-behaviour test was followed by a deliberately narrow implementation candidate on `feature/telegram-start-welcome`; no provider-wide onboarding refactor was introduced.
 
 ## 3. Chatwoot capability finding
 
@@ -99,6 +99,18 @@ Do not alter the Telegram webhook, bot token, or application code during these t
 
 ## 6. Decision gate
 
+### Current implementation candidate
+
+For the WISE deep-link entry (`/start support`), the candidate implementation now:
+
+- resolves the contact and existing/new conversation normally;
+- does not persist the technical `/start support` command as an incoming Chatwoot message;
+- creates one outgoing WISE welcome message in the conversation;
+- uses a deterministic `source_id` derived from the Telegram message id so a webhook retry does not create another welcome message;
+- leaves other Telegram messages and unknown `/start <parameter>` values on the existing path.
+
+Runtime validation is still required before this is treated as pilot-ready.
+
 ### If Chatwoot greeting works for the Telegram inbox
 
 Use a concise WISE greeting to establish expectations immediately after the first support conversation begins.
@@ -151,6 +163,6 @@ Only minimum necessary, safe, non-clinical context should cross the Support boun
 
 **Investigation:** PASS — native Telegram deep-link capability is documented; current repository has no special /start handling.
 
-**Implementation:** DEFERRED — one controlled client + Chatwoot behaviour test is required.
+**Implementation:** CANDIDATE — narrow `/start support` handling is implemented on `feature/telegram-start-welcome`; local focused test and OCI runtime validation are still required.
 
 **Next input:** record the results of Test A/B/C, then decide whether the pilot needs only CTA copy/configuration or a narrowly scoped implementation change.
