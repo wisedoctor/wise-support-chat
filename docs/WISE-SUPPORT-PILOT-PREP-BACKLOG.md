@@ -638,3 +638,27 @@ Close this item only after:
 8. the established two-way Telegram text regression still passes.
 
 The detailed evidence is maintained in `docs/WISE-SUPPORT-TELEGRAM-WELCOME-START-UX-2026-10-03.md` and the GHCR publication checkpoint.
+
+## `/start support` deployment checkpoint — 2026-10-06
+
+**Status:** Corrected image ready for OCI runtime rollout.
+
+- local focused RSpec: `33 examples, 0 failures`
+- GHCR immutable digest: `sha256:fc11023a6f146ca475bd003a2071d6dc54f0dbaa2d3c868c792e8f1acad3df19`
+- OCI pull and digest verification: PASS
+- current runtime not yet replaced; rollback baseline preserved
+
+### Next gate
+
+Deploy the corrected image to WEB + WORKER only, then validate:
+
+1. both containers start cleanly on the exact digest;
+2. HTTPS remains `200`;
+3. fresh `?start=support` produces the WISE welcome in Telegram;
+4. welcome appears once in Chatwoot and Telegram;
+5. patient reply remains in the same conversation;
+6. repeated/retried `/start support` does not duplicate the welcome;
+7. established two-way Telegram text regression remains intact.
+
+Keep the item open until the Telegram-visible welcome and retry/idempotency behaviour are proven.
+
