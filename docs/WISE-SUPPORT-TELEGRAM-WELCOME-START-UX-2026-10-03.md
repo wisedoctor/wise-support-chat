@@ -215,3 +215,18 @@ Local focused validation: pending for the corrected code/image.
 OCI runtime validation: pending for the corrected image.
 
 Pilot disposition: keep the /start support slice open until Telegram-visible welcome delivery and retry-safe behaviour are proven end-to-end.
+
+## 12. Corrected image publication and OCI pull — 2026-10-06
+
+The corrected implementation passed the focused local RSpec suite (`33 examples, 0 failures`), was built and published successfully, and the exact immutable image was pulled to the OCI validation VM.
+
+Deployment candidate:
+
+`ghcr.io/wisedoctor/wise-support-chat@sha256:fc11023a6f146ca475bd003a2071d6dc54f0dbaa2d3c868c792e8f1acad3df19`
+
+OCI pull and digest verification: **PASS**.
+
+The candidate has **not yet replaced** the running WEB + WORKER. The previously running corrected-but-not-delivering candidate remains available as the immediate rollback baseline.
+
+Next validation is intentionally limited to WEB + WORKER replacement followed by runtime startup, HTTPS, and fresh `/start support` E2E. No infrastructure or Telegram webhook changes are required.
+
