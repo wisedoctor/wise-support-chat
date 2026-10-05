@@ -49,8 +49,11 @@ class Telegram::IncomingMessageService
   end
 
   def create_support_welcome_message
-    source_id = "telegram_start:#{telegram_params_message_id}"
-    existing_message = @conversation.messages.find_by(source_id: source_id)
+    telegram_start_message_id = telegram_params_message_id.to_s
+    existing_message = @conversation.messages.find_by(
+      message_type: :outgoing,
+      additional_attributes: { telegram_start_message_id: telegram_start_message_id }
+    )
     return if existing_message
 
     @conversation.messages.create!(
@@ -59,7 +62,7 @@ class Telegram::IncomingMessageService
       inbox_id: @inbox.id,
       message_type: :outgoing,
       sender: nil,
-      source_id: source_id
+      additional_attributes: { telegram_start_message_id: telegram_start_message_id }
     )
   end
 
