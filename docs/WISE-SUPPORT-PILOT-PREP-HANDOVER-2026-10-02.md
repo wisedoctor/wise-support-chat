@@ -875,3 +875,37 @@ Required validation order:
 
 Do not merge the branch or treat the OCI rollout as complete until this controlled runtime validation is recorded.
 \n\n## Latest OCI retry/idempotency checkpoint — 2026-10-03\n\n**Status: PASS — candidate runtime validated for inbound document + duplicate-message scenario**\n\nThe controlled OCI rollout of the Telegram retry/idempotency candidate is now complete for the tested document scenario.\n\n### Proven\n\n- Immutable candidate image: `ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`.\n- WEB healthy; local HTTP check returned 200.\n- WORKER healthy; Sidekiq connected to Redis and processed jobs.\n- `FRONTEND_URL=https://support.wisehealth.in` preserved.\n- OCI S3-compatible Active Storage configuration preserved on WEB and WORKER.\n- Fresh inbound document through `@wise_chatwoot_poc_bot` appeared as **one Chatwoot message**.\n- Attachment opened/downloaded successfully.\n\n### Interpretation\n\nThis closes the controlled OCI validation step for the targeted inbound document/idempotency scenario. It is not a blanket declaration that all Telegram media variants or all retry permutations are complete. Image/Rx regression and any deliberately repeated-event test can remain as explicit follow-up coverage.\n\n### Operational note\n\nSome post-test log commands returned `No such container: wise-support-chat-worker` / `wise-support-chat-web`. This occurred because the expected container names no longer matched the active container names at the time of those commands. It does not contradict the earlier health checks or the successful end-to-end portal test. Current container names should be enumerated before further diagnostics.\n\n\n## Full inbound media + assignment checkpoint — 2026-10-03\n\nThe candidate OCI runtime has now been validated with both document and image inbound attachments. Both opened successfully in Chatwoot, no duplicate messages were observed, the messages landed in the Support Rep's **Mine** inbox, and replies were received back in Telegram.\n\nThis closes the targeted inbound media/idempotency validation for the tested document + image scenarios. Continue to retain the current runtime and rollback artifacts while the remaining pilot-prep work moves forward.\n\nAssignment behaviour is now positively demonstrated for this scenario, but the separate operational SOP should still document Inbox, Conversation, Mine, Unassigned, resolution and re-entry behaviour before the assignment workstream is formally closed.\n\n\n## Assignment / Inbox operating-model checkpoint — 2026-10-03\n\nThe latest OCI validation confirms the tested assignment path: fresh inbound document and image messages landed in the Support Rep's **Mine** inbox and replies returned successfully to Telegram.\n\nAssignment is now treated as a focused SOP/lifecycle verification item rather than an unresolved implementation defect. The dedicated operating-model document is `docs/WISE-SUPPORT-ASSIGNMENT-INBOX-CONVERSATION-SOP-2026-10-03.md`.\n\nNext pilot-prep slice: Welcome message / Telegram `/start` UX, followed by context handoff and production entry-point audit.\n
+
+## Latest /start support checkpoint — 2026-10-06
+
+The OCI rollout of the first `/start support` candidate proved the Telegram deep-link path itself. Telegram delivered `/start support` to Chatwoot and the technical command was persisted in the conversation. The candidate also created the WISE welcome message in Chatwoot and enqueued `SendReplyJob`, but the welcome did not reach Telegram.
+
+Root cause: `source_id` was incorrectly used as the welcome idempotency marker. Chatwoot's outbound channel guard treats populated `source_id` as channel-originated and therefore skips Telegram delivery.
+
+Corrected source design:
+
+- welcome remains `message_type: outgoing`;
+- `source_id` remains unset;
+- Telegram start message id is stored in `additional_attributes.telegram_start_message_id`;
+- repeated delivery of the same Telegram start event is suppressed using that marker.
+
+### Immediate next action
+
+The user should now update the local `feature/telegram-start-welcome` branch from origin and run the focused Telegram service spec before any OCI replacement.
+
+Expected sequence:
+
+1. `git fetch origin`
+2. `git switch feature/telegram-start-welcome`
+3. `git pull --ff-only origin feature/telegram-start-welcome`
+4. run the focused `spec/services/telegram/incoming_message_service_spec.rb` suite using the existing test-capable compose harness;
+5. confirm the corrected welcome test passes and the duplicate-start test passes;
+6. build/publish a new immutable linux/amd64 GHCR image;
+7. capture/retain the current OCI `0b1c591f56a1...` runtime as rollback;
+8. replace WEB + WORKER only with the new immutable digest;
+9. validate HTTPS, WEB/WORKER health, Active Storage and `FRONTEND_URL`;
+10. test a fresh `?start=support` invocation and confirm the WISE welcome is visible in Telegram;
+11. run normal two-way text regression and a repeated-start/idempotency check;
+12. update the welcome UX, GHCR checkpoint, smoke-test and backlog documents with the final result.
+
+Do not change Nginx, DNS/TLS, PostgreSQL, Redis, Telegram webhook ownership, or either Telegram bot as part of this fix.
