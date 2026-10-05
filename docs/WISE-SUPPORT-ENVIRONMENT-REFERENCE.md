@@ -1,0 +1,790 @@
+# WISE Support — Environment Infrastructure Reference
+
+## Purpose
+
+This document records the infrastructure choices and alternatives identified while moving the WISE Support implementation from local development toward a production-capable environment.
+
+It is a reference record, not a final infrastructure lock-in. The WISE Support architecture remains provider-neutral and should not make Chatwoot, Render, PostgreSQL hosting, Redis/Valkey hosting, or object storage a conceptual dependency.
+
+## Current validation environment
+
+The current production-validation setup uses:
+
+- Runtime platform: Render
+- Region: Singapore
+- Container image: GitHub Container Registry (GHCR)
+- Image source: wisedoctor/wise-support-chat, develop
+- Image build: GitHub Actions → GHCR
+- Web process: Render Web Service
+- Worker process: Render Background Worker
+- Relational database: Render PostgreSQL, PostgreSQL 16
+- Queue/cache dependency: Render Key Value (Redis-compatible), being provisioned
+- Object storage: Oracle Cloud Infrastructure (OCI) Object Storage, using its S3-compatible API
+- Application/provider layer: Chatwoot is the current support-conversation provider implementation; it is not the architectural definition of WISE Support.
+
+The current Render PostgreSQL instance is being used for validation. Its Free-plan lifecycle/retention limitations mean it should not automatically be treated as the final long-term production database.
+
+## Database hosting alternatives to retain as reference
+
+### Option A — Render PostgreSQL
+
+Useful for:
+- Fast Render-native validation
+- Simple private connectivity between Render services
+- Minimal initial infrastructure work
+
+Current status:
+- Provisioned as wise-support-chat-db
+- PostgreSQL 16
+- Singapore
+- Available
+- Free plan for validation
+
+This is the current validation choice, not a permanent architectural commitment.
+
+### Option B — Existing WISE Supabase PostgreSQL
+
+The existing WISE Supabase environment should remain a valid candidate for the eventual support runtime database where operationally appropriate.
+
+Potential advantages:
+- Existing WISE database platform and operational familiarity
+- Existing WISE infrastructure/access patterns
+- Avoids introducing another independent PostgreSQL estate if the tenancy and workload boundaries are appropriate
+
+Before adopting this option, explicitly validate:
+- Database ownership and isolation boundaries
+- Migration ownership
+- Connection/security model from Render
+- Connection pooling and connection limits
+- Backup/restore expectations
+- Whether Chatwoot's schema and migrations should remain isolated from core WISE application schemas
+- Whether support-provider data belongs in the existing Supabase project or a dedicated database/project
+
+Important: do not point the support runtime at the core WISE database merely for convenience. Shared infrastructure must still preserve explicit ownership and integration boundaries.
+
+### Option C — OCI-hosted PostgreSQL
+
+OCI remains another infrastructure option if there is a reason to consolidate more of the runtime/database stack within OCI.
+
+This should be evaluated only against the operational burden, availability, backup, security, networking, maintenance, and cost implications of running PostgreSQL there.
+
+## Object storage
+
+OCI Object Storage has been selected for the current validation environment because the user has an OCI bucket with the applicable free-tier allocation.
+
+Chatwoot can consume S3-compatible object storage through its Active Storage S3-compatible configuration.
+
+Reference configuration concept:
+- Bucket name
+- S3-compatible access key ID
+- S3-compatible secret access key
+- OCI region
+- S3-compatible endpoint
+- Optional path-style configuration where required
+
+Credentials must be stored as deployment secrets/environment variables and must never be committed to Git.
+
+The bucket should remain private unless a specific application requirement establishes otherwise.
+
+### OCI S3-compatible credential mapping
+
+The OCI Console terminology is easy to confuse with generic S3 terminology. For the current validation environment, map the values as follows:
+
+| Render environment variable | OCI Console source |
+|---|---|
+| `STORAGE_ACCESS_KEY_ID` | **Profile → User settings → Customer secret keys → copy Access key** |
+| `STORAGE_SECRET_ACCESS_KEY` | **Profile → User settings → Customer secret keys → Generate secret key → copy the one-time visible Secret key value** |
+| `STORAGE_BUCKET_NAME` | OCI Object Storage bucket name |
+| `STORAGE_REGION` | OCI region, currently `ap-hyderabad-1` |
+| `STORAGE_ENDPOINT` | OCI S3-compatible endpoint, not a Pre-Authenticated Request (PAR) URL |
+
+Important: the OCI User OCID is **not** the S3-compatible Access Key ID. The Customer Secret Key's Access key is the value used for `STORAGE_ACCESS_KEY_ID`, while the one-time visible Secret key is used for `STORAGE_SECRET_ACCESS_KEY`.
+
+Do not use an OCI Pre-Authenticated Request URL as the Chatwoot storage endpoint. PAR URLs contain a temporary authorization token and are a different access mechanism.
+
+Attachment upload/download should be tested end-to-end before considering the object-storage integration validated.
+
+## Queue / cache
+
+### Web concurrency versus background workers
+
+These are two different kinds of workers/processes and must not be conflated.
+
+- **Puma/Web workers** serve HTTP requests for the Chatwoot UI, APIs, webhooks and other synchronous web traffic. The repository's `config/puma.rb` defaults `WEB_CONCURRENCY` to `0`, which means one Puma process rather than zero web service capability. Concurrency within that process is controlled by `RAILS_MIN_THREADS` / `RAILS_MAX_THREADS`; the current validation configuration uses 5 threads.
+- **Sidekiq workers** are separate background worker processes. They consume Redis/Valkey-backed jobs such as Chatwoot's asynchronous webhook processing and other background work. For the WISE Support Telegram/Chatwoot flow, the Render Background Worker is therefore required for the queued work to be processed after the Web service accepts/enqueues it.
+- `WEB_CONCURRENCY=0` does **not** disable Sidekiq and does **not** mean that Chatwoot cannot serve multiple end users. It only avoids Puma's clustered multi-process mode, which is appropriate for the small validation instance.
+- Multiple patients/end users and multiple support agents are supported at the application level. The validation topology should use one Web service plus a separate Sidekiq Worker; scaling capacity later can be addressed independently by increasing web capacity and/or Sidekiq concurrency/workers as workload requires.
+
+For the initial pilot, 1–2 support agents and multiple concurrent patient conversations are a valid workload for the architecture. The Free validation instance is a capacity-test environment, not a production capacity target.
+
+The current validation path uses Render Key Value as the Redis-compatible dependency.
+
+Alternatives to retain for later evaluation include:
+- Existing WISE Redis/Valkey infrastructure, if available and appropriate
+- OCI-hosted Redis-compatible infrastructure
+- Another managed Redis/Valkey service
+
+As with the database, the infrastructure choice should not leak into the WISE Support conceptual architecture.
+
+## Container distribution
+
+The current image pipeline is:
+
+GitHub source → GitHub Actions → GHCR → Render
+
+The first successful image build was produced from the develop branch.
+
+The preferred deployment model is to build the Chatwoot-derived image in GitHub Actions and have Render run the prebuilt image, rather than requiring Render to perform the large source build.
+
+This separates image build capacity, runtime capacity, and application deployment, and avoids tying the application architecture to Render's source-build resource limits.
+
+## Environment separation
+
+Development, validation/demo, and production must remain distinct.
+
+At minimum:
+- Development: local Docker/runtime, local webhooks/tunnels where necessary
+- Validation/demo: Render/managed services using non-production credentials and test data
+- Production: stable WISE-owned ingress, production credentials, persistent database/storage, proper webhook configuration, monitoring, backup/restore, and operational controls
+
+The local ngrok/proxy arrangement is development-only and must not become the production ingress design.
+
+## Architectural principle
+
+Infrastructure is replaceable implementation detail.
+
+The WISE Support engine should depend on explicit application capabilities/contracts rather than directly encoding assumptions such as:
+- Render PostgreSQL
+- Supabase
+- OCI PostgreSQL
+- Redis/Valkey vendor
+- Chatwoot
+- OCI Object Storage
+- GHCR
+
+These are environment/runtime choices. The Support module remains channel-neutral and provider-neutral.
+
+## Decision status
+
+| Component | Current validation choice | Alternatives retained |
+|---|---|---|
+| Runtime | Render | Other managed/container runtime |
+| Image registry | GHCR | Other OCI-compatible registry |
+| Database | Render PostgreSQL | Existing WISE Supabase PostgreSQL; OCI PostgreSQL |
+| Queue/cache | Render Key Value | Existing WISE Redis/Valkey; OCI/other managed Redis-compatible service |
+| Object storage | OCI Object Storage | Other S3-compatible provider |
+| Conversation provider | Chatwoot | WISE-native provider or another provider |
+| Region | Singapore | To be decided per production infrastructure constraints |
+
+This document should be updated when the validation environment is converted into the final production topology.
+
+## Current OCI Validation Update — 2026-09-30
+
+The active hosted validation path is now OCI Compute; Render is paused/archived as a validation path.
+
+### OCI validation environment
+- Runtime: OCI Compute, Hyderabad (`ap-hyderabad-1`), AD-1
+- Instance: `wise-support-chat-oci-validation`
+- Shape: Intel `VM.Standard3.Flex`, 1 OCPU / 16 GB RAM (Linux exposes 2 logical CPUs)
+- OS: Oracle Linux Server 9.8 x86_64
+- Container runtime: Docker Engine 29.8.1; Docker Compose plugin 5.5.1
+- VCN: `wise-support-chat-vcn`
+- Subnet: `wise-support-chat-public-subnet`
+- Current public IP: `140.245.237.47` (validation infrastructure; may change)
+- Image architecture required: `linux/amd64` / x86_64
+- GHCR repository: `ghcr.io/wisedoctor/wise-support-chat`
+- OCI Object Storage remains the S3-compatible attachment-storage option: bucket `oracle-oci-bucket-chatwoot-wisehealth`, region `ap-hyderabad-1`.
+
+This VM is the current validation/E2E environment, not a final production infrastructure decision. The Always Free A1 pool can continue to be retried separately if capacity becomes available.
+
+
+### OCI image and runtime validation — 2026-09-30
+
+The OCI VM has now passed image-level and container-runtime smoke validation for the exact Chatwoot image selected for the x86_64 OCI host.
+
+#### GHCR authentication
+- GHCR package: private
+- GitHub repository: public
+- OCI Docker client authenticated to GHCR using a GitHub Personal Access Token (classic) with package-read access.
+- The credential is not stored in Git and must not be recorded in this document.
+
+#### Exact image validated
+- Image: `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176`
+- GitHub Actions build: verified `linux/amd64`
+- OCI host: `linux/amd64`
+- Pulled successfully on OCI
+- Image ID: `sha256:94260b80fcf4f72fab0f1fc91b7ec7ce1a767f3e44af10077b19d9845828544a`
+- RepoDigest: `ghcr.io/wisedoctor/wise-support-chat@sha256:94260b80fcf4f72fab0f1fc91b7ec7ce1a767f3e44af10077b19d9845828544a`
+- The digest matches the previously verified GitHub Actions AMD64 build artifact.
+
+#### Container runtime smoke test
+The exact image was executed on the OCI VM with a non-persistent smoke-test container. The container successfully reported:
+- `IMAGE_SMOKE_OK`
+- `x86_64`
+- Ruby `3.4.4`
+- Rails `7.2.3.1`
+
+This establishes that the exact image can be pulled and executed successfully on the OCI Intel/x86_64 VM. It does not yet validate PostgreSQL, Redis/Valkey, Chatwoot migrations, persistent storage, web/worker startup, HTTPS ingress, or Telegram E2E.
+
+
+#### Dependency image pull checkpoint — 2026-09-30
+The clean OCI VM had no existing PostgreSQL or Redis/Valkey containers and no listeners on ports 5432/6379. The dependency images were then pulled successfully:
+- PostgreSQL: `postgres:16-alpine`
+  - Digest: `sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea`
+- Redis: `redis:7-alpine`
+  - Digest: `sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499`
+
+The images are downloaded but not yet started. No Chatwoot application state has been changed at this stage.
+
+
+
+
+
+
+
+
+
+#### Chatwoot image → PostgreSQL network connectivity verified — 2026-09-30
+The exact image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` successfully reached PostgreSQL over the private `wise-support-net` Docker network using the container DNS name `wise-support-postgres`.
+
+Result:
+`wise-support-postgres:5432 - accepting connections`
+
+This validates the application-container-to-database network path before any Chatwoot Rails initialization or schema migration is attempted.
+
+#### Private dependency network attached — 2026-09-30
+Both dependency containers are now attached to `wise-support-net`:
+- `wise-support-postgres`: `bridge` + `wise-support-net`
+- `wise-support-redis`: `bridge` + `wise-support-net`
+
+Chatwoot can therefore use the container DNS names `wise-support-postgres` and `wise-support-redis` over the private Docker network. The existing localhost host bindings remain unchanged.
+
+#### Private Docker network created — 2026-09-30
+Created the Docker network `wise-support-net` on the OCI validation VM.
+Network ID:
+`d5b39d3d75b17f95456ef724e515ffe23e35b7c9cd2af7fe48e14aca95a32269`.
+
+The network will be used for private container-to-container communication between Chatwoot, PostgreSQL, and Redis without publicly exposing the dependency ports.
+
+#### Redis readiness verified — 2026-09-30
+The running `wise-support-redis` container passed Redis connectivity validation:
+`PONG` from `redis-cli ping`.
+
+PostgreSQL and Redis are therefore both independently running and responding on the OCI validation VM. Chatwoot has not yet been connected to these dependencies.
+
+#### Redis container started — 2026-09-30
+Redis 7 Alpine is now running on the OCI validation VM:
+- Container: `wise-support-redis`
+- Image: `redis:7-alpine`
+- Persistent volume: `wise-support-redis-data`
+- Host binding: `127.0.0.1:6379 -> container 6379`
+- Redis persistence enabled with AOF (`--appendonly yes`)
+- The Redis port is therefore not publicly exposed by the VM.
+
+Current dependency containers shown by `docker ps`:
+- `wise-support-postgres` — PostgreSQL 16, localhost:5432
+- `wise-support-redis` — Redis 7, localhost:6379
+
+#### PostgreSQL readiness verified — 2026-09-30
+The running `wise-support-postgres` container passed PostgreSQL readiness validation:
+`/var/run/postgresql:5432 - accepting connections`.
+
+This confirms the PostgreSQL server is accepting connections inside the container. Chatwoot schema/migrations have not yet been initialized.
+
+#### PostgreSQL container started — 2026-09-30
+PostgreSQL 16 Alpine is now running on the OCI validation VM:
+- Container: `wise-support-postgres`
+- Image: `postgres:16-alpine`
+- Database: `chatwoot_production`
+- Database user: `chatwoot`
+- Persistent volume: `wise-support-postgres-data`
+- Host binding: `127.0.0.1:5432 -> container 5432`
+- The database port is therefore not publicly exposed by the VM.
+
+Initial `docker ps` verification showed the container `Up` successfully. Database readiness/application connectivity has not yet been separately validated.
+
+#### Persistent dependency volumes — 2026-09-30
+Created the following Docker named volumes on the OCI validation VM:
+- `wise-support-postgres-data`
+- `wise-support-redis-data`
+
+These volumes are intended to keep PostgreSQL and Redis data independent of container lifecycle. The dependency containers have not yet been started.
+
+#### Validation checkpoint
+Current chain proven:
+
+OCI x86_64 VM → Docker 29.8.1 → exact GHCR image → linux/amd64 → Ruby 3.4.4 → Rails 7.2.3.1 → successful container execution.
+
+Next validation stage: provision the runtime dependencies (PostgreSQL and Redis/Valkey) and initialize Chatwoot's database before starting the persistent Web/Sidekiq services.
+
+### Render validation status — paused/archived
+
+Render is no longer the active hosted validation runtime. The Render path is retained as historical/reference infrastructure and should not be treated as the current deployment target.
+
+Reasons for archival:
+1. The original Render source-build Web service exhausted the available build memory while compiling the large Chatwoot dependency tree.
+2. The replacement image-backed validation path was then explored, but fresh-database initialization and process-start/Docker-command behavior did not produce a clean, repeatable Web deployment.
+3. OCI now provides a directly controllable VM runtime for the hosted validation and E2E work.
+
+Existing Render resources/configuration should be retained only until explicitly decommissioned.
+
+
+#### PostgreSQL extension compatibility checkpoint — 2026-09-30
+The first Chatwoot database-initialization attempt exposed an important migration prerequisite: the generic postgres:16-alpine image does not include the PostgreSQL vector/pgvector extension required by this Chatwoot build.
+
+Observed failure during the exact image's bundle exec rails db:chatwoot_prepare:
+- Rails production boot succeeded after supplying a stable SECRET_KEY_BASE.
+- Chatwoot's database preparation then failed because PostgreSQL could not create/use extension vector.
+- PostgreSQL reported that /usr/local/share/postgresql/extension/vector.control was missing.
+- The current PostgreSQL 16 Alpine container has pg_stat_statements, pg_trgm, pgcrypto, and plpgsql, but not vector.
+- The earlier installation_configs does not exist message occurred while the database was still uninitialized and should not be treated as a separate schema defect at this stage.
+
+This is an environment-migration lesson: database engine/version compatibility is not sufficient; required PostgreSQL extensions must also be present in the actual database runtime image/service before application schema initialization.
+
+##### Preventive migration checklist — PostgreSQL extension dependencies
+For any future migration of Chatwoot or another PostgreSQL-backed WISE service:
+1. Inspect the application schema (db/schema.rb / structure.sql) and migrations for CREATE EXTENSION / extension dependencies before selecting the PostgreSQL image.
+2. Enumerate the required extensions explicitly and compare them with the target PostgreSQL service/image's installed extension set.
+3. Verify extension availability with SELECT name, default_version FROM pg_available_extensions or equivalent before running application migrations.
+4. Prefer an official/known PostgreSQL image that already includes the required extension (for example a pgvector-enabled PostgreSQL image) where appropriate, rather than discovering the dependency during first boot.
+5. If using a managed PostgreSQL service, verify that the required extension is supported and enabled in that service before migration.
+6. Keep database engine version and extension versions as explicit environment prerequisites alongside the application image architecture/runtime requirements.
+7. Perform a disposable schema/bootstrap test against the exact target database image/service before treating the environment as migration-ready.
+8. Preserve the persistent volume while replacing a dependency container only when the database compatibility procedure has been verified; never delete a potentially useful database volume merely to change the container image.
+
+Current remediation status: pending. The existing PostgreSQL data volume is being preserved; no destructive database reset or volume deletion has been performed.
+
+#### Chatwoot database bootstrap prerequisite — 2026-09-30
+The exact Chatwoot image exposes db:chatwoot_prepare, documented by Rails task output as: Runs setup if database does not exist, or runs migrations if it does.
+
+The image's docker/entrypoints/rails.sh does not automatically run database migrations; it waits for PostgreSQL and then executes the supplied process command. Therefore future environment setup procedures must explicitly provision the required PostgreSQL extensions before invoking db:chatwoot_prepare.
+
+The production Rails environment also requires a persistent SECRET_KEY_BASE. The validation setup generated one locally on the OCI VM; secrets must not be recorded in this document or committed to Git.
+
+#### PostgreSQL pgvector remediation checkpoint — 2026-09-30
+The initial PostgreSQL container (`postgres:16-alpine`) was stopped without deleting its container or persistent volume, preserving the existing database state for safe replacement.
+
+A compatible PostgreSQL image was pulled and verified:
+- Image: `pgvector/pgvector:pg16`
+- Digest: `sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b`
+- PostgreSQL: 16.15
+- Verified pgvector extension control file: `/usr/share/postgresql/16/extension/vector.control`
+
+The extension was verified by inspecting the disposable image directly rather than starting a temporary PostgreSQL server. A previous nested-server test was interrupted after multiple SIGTERM/SIGINT signals; it was disposable and did not use the persistent PostgreSQL volume.
+
+Next remediation step: recreate `wise-support-postgres` from `pgvector/pgvector:pg16` using the existing `wise-support-postgres-data` volume, then verify PostgreSQL readiness and installed extensions before rerunning Chatwoot `db:chatwoot_prepare`.
+
+#### pgvector PostgreSQL container recreated — 2026-09-30
+The PostgreSQL container was recreated successfully from `pgvector/pgvector:pg16` using the existing `wise-support-postgres-data` persistent volume and attached to `wise-support-net`. PostgreSQL readiness was then verified successfully:
+`/var/run/postgresql:5432 - accepting connections`.
+
+No database reset or volume deletion was performed. The next checkpoint is verification of the `vector` extension in the running database before retrying Chatwoot initialization.
+
+
+#### PostgreSQL extension availability verified — 2026-09-30
+The running `wise-support-postgres` database was queried for the required PostgreSQL extensions before retrying Chatwoot initialization. The target database reports all expected extensions as available:
+- `pg_stat_statements` — 1.10
+- `pg_trgm` — 1.6
+- `pgcrypto` — 1.3
+- `plpgsql` — 1.0
+- `vector` — 0.8.6
+
+The previous missing-`vector` migration blocker is therefore resolved at the database runtime level. The next step is to rerun Chatwoot `db:chatwoot_prepare` against this pgvector-backed database.
+
+
+#### Chatwoot pgvector bootstrap retry — 2026-09-30
+The first lines of the post-remediation `db:chatwoot_prepare` retry show the same early production-boot warning/error pattern involving `installation_configs` while the database is still being initialized. The output then continues with `Loading Installation config`. This checkpoint is intentionally recorded as **in progress / not yet classified as a migration failure** until the command reaches its final exit status and output.
+
+
+#### Chatwoot database preparation verified — 2026-09-30
+After the pgvector-backed retry of `db:chatwoot_prepare` returned to the shell without a terminal error, the database was inspected directly. The `public.installation_configs` table exists and the database contains 107 public tables:
+
+`installation_configs | 107`
+
+This confirms that the earlier `installation_configs does not exist` log line was an initialization-time lookup during successful database preparation, not the final migration blocker. The previous missing-`vector` blocker is resolved and the Chatwoot schema has been created. Next validation should move to application runtime startup (Web/Sidekiq) rather than rerunning database preparation.
+
+
+#### Chatwoot public-table inventory captured — 2026-09-30
+The initialized `chatwoot_production` database was queried directly for all tables in the `public` schema. The result contains 107 tables, including core Chatwoot domains such as `accounts`, `users`, `contacts`, `contact_inboxes`, `inboxes`, `conversations`, `messages`, `attachments`, `teams`, `labels`, `webhooks`, channel-specific tables, Active Storage tables, reporting/automation/SLA tables, Captain/AI tables, and `installation_configs`.
+
+This inventory is retained as the database-side schema checkpoint. Exact one-to-one reconciliation against the migrations/schema embedded in the pinned `sha-a6b2176` application image remains the next verification step; no external generic table-count claim is being treated as authoritative.
+
+
+#### Chatwoot migration-status reconciliation — 2026-09-30
+The exact pinned application image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` was used to inspect Rails migration status against the initialized `chatwoot_production` database. The captured `db:migrate:status` output shows every listed migration as `up`, with no `down` migrations. The migration sequence runs from `20230426130150 Init schema` through the latest listed `20260924000000 Add icon to conversation monitors` migration. The database therefore has no pending migrations according to the exact application image.
+
+Combined with the earlier database-side inventory of 107 public tables and the presence of `installation_configs`, this provides strong environment-level evidence that Chatwoot database preparation completed successfully for the pinned image. The 107-table count is recorded as an observed database result, not as a generic Chatwoot documentation table-count claim.
+
+
+#### Redis connectivity verified from exact Chatwoot image — 2026-09-30
+A disposable container using the exact pinned Chatwoot image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` successfully resolved `wise-support-redis` over `wise-support-net` and received `PONG` through the Ruby Redis client.
+
+Result: `REDIS_CHATWOOT_IMAGE_OK=PONG`.
+
+This validates the Chatwoot runtime image → private Docker network → Redis path. The test was disposable and did not modify Chatwoot or Redis state. PostgreSQL, schema/migrations, and Redis connectivity are now independently validated; next step is persistent Chatwoot Web startup.
+
+
+#### Chatwoot Web container started — 2026-09-30
+The persistent Web container `wise-support-chat-web` is running from the exact pinned image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176`.
+
+- Container ID: `d2fcd6aff52c978e304f51ac9bc3d7d82fd4cde93a0a128f71b06e76d8055c27`
+- Status: Up
+- Host binding: `127.0.0.1:3000 -> container 3000`
+- Network: `wise-support-net`
+
+The service is deliberately localhost-only at this stage; public ingress/HTTPS has not yet been enabled. Next checkpoint is Web application health/log validation before exposing the service.
+
+
+#### Chatwoot Web startup validated — 2026-09-30
+Web startup logs from `wise-support-chat-web` confirm successful production Puma startup using the exact pinned image:
+- Puma 7.2.1
+- Ruby 3.4.4 x86_64
+- Min/max threads: 5/5
+- Environment: production
+- Listening: `http://0.0.0.0:3000` inside the container
+- IP lookup setup was skipped because `IP_LOOKUP_API_KEY` is intentionally empty in this validation environment.
+
+This confirms the Rails Web process has reached its listening state. The host binding remains localhost-only (`127.0.0.1:3000`), so public ingress has not yet been enabled.
+
+
+#### Chatwoot Web HTTP health validated — 2026-09-30
+Host-side request to `http://127.0.0.1:3000` returned `HTTP/1.1 302 Found` with location `/installation/onboarding`. This confirms the Rails application is responding through the host's localhost port binding. The redirect is the expected onboarding route for the fresh Chatwoot installation; no public ingress is enabled yet.
+
+
+#### Browser UI validation via SSH tunnel — 2026-09-30
+The OCI Chatwoot Web application was reached successfully from the workstation through an SSH local-forward tunnel using local port 3001:
+
+`localhost:3001 -> SSH -> OCI 127.0.0.1:3000 -> wise-support-chat-web`
+
+The browser rendered the Chatwoot first-run `/installation/onboarding` screen with the setup form (Name, Company Name, Work Email, Password). This validates end-to-end workstation-to-OCI Web UI reachability without exposing Chatwoot publicly.
+
+Local WSL port 3000 remains occupied by the existing local WISE Support/Chatwoot development environment and was deliberately left untouched.
+
+
+#### Chatwoot onboarding and authenticated UI validated — 2026-09-30
+The fresh OCI Chatwoot installation was completed successfully through the SSH tunnel. The browser now reaches `/app/accounts/1/dashboard` and the administrator is authenticated.
+
+Observed account state:
+- Account: `1`
+- Chatwoot dashboard rendered successfully
+- No active conversations yet
+- `My Inbox` is present; the Telegram channel/inbox has since been configured as part of the dress rehearsal
+- The first-run onboarding flow is complete
+
+This validates the persistent Web application, database initialization, session/authentication, and browser UI end-to-end. Telegram/channel configuration and the background worker remain separate checkpoints and have not yet been changed.
+
+
+#### Chatwoot Sidekiq worker container started — 2026-09-30
+The persistent worker container `wise-support-chat-worker` is running from the same pinned Chatwoot image `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` on `wise-support-net`.
+
+- Container ID: `d6729cfbb5873d3a392cd8bee4a75c2a90583ff2e5c645aaa2e7da6708e64cc4`
+- Status: Up
+- Command: `bundle exec sidekiq -C config/sidekiq.yml`
+- No host port is published; the worker communicates over the private Docker network.
+
+Container status confirms the process remains running. Worker log/queue health is the next checkpoint before channel configuration.
+
+
+#### Chatwoot Sidekiq worker health validated — 2026-09-30
+Worker logs confirm active Sidekiq job processing, not merely a running container. Observed scheduled jobs being enqueued, performed, and completed successfully, including `ConversationMonitors::DispatchJob`, `Internal::DispatchConversationMonitorsJob`, and `Inboxes::FetchImapEmailInboxesJob`.
+
+This validates the Web + Sidekiq runtime against the initialized PostgreSQL/pgvector and Redis dependency layer. No worker error is present in the supplied log excerpt.
+
+
+#### Complete OCI Chatwoot runtime topology validated — 2026-09-30
+All four persistent runtime containers are Up and attached to `wise-support-net`:
+
+| Container | Image | Private IP | Host exposure |
+|---|---|---|---|
+| `wise-support-chat-web` | `ghcr.io/wisedoctor/wise-support-chat:sha-a6b2176` | 172.18.0.4 | `127.0.0.1:3000 -> 3000` |
+| `wise-support-chat-worker` | same pinned image | 172.18.0.5 | none |
+| `wise-support-postgres` | `pgvector/pgvector:pg16` | 172.18.0.2 | `127.0.0.1:5432 -> 5432` |
+| `wise-support-redis` | `redis:7-alpine` | 172.18.0.3 | `127.0.0.1:6379 -> 6379` |
+
+The private-network topology is validated and the database/Redis services are not publicly exposed. Browser access is currently through the SSH tunnel only.
+
+
+## Environment setup completion status — 2026-09-30
+
+### Core OCI validation environment — COMPLETE
+The following environment layers have been provisioned and validated:
+- OCI Compute VM and network topology
+- Docker Engine
+- Exact x86_64 Chatwoot image from GHCR
+- Persistent PostgreSQL + pgvector
+- Persistent Redis with AOF
+- Private Docker network
+- Chatwoot database preparation and migrations
+- Chatwoot Web/Puma startup and HTTP response
+- Browser access through SSH tunnel
+- Chatwoot first-run onboarding and administrator login
+- Persistent Sidekiq worker
+- Sidekiq scheduled-job execution
+- Combined Web/Worker/PostgreSQL/Redis container topology
+
+### Remaining environment/operational setup — NOT YET COMPLETE
+The following are deliberately deferred until the core runtime and Telegram dress rehearsal are validated:
+- Public ingress/reverse proxy
+- Production DNS and TLS/HTTPS
+- OCI firewall/security-list rules for the final ingress path
+- Production-style restart/recovery policy and boot persistence
+- PostgreSQL backup/restore procedure and recovery test
+- OCI Object Storage attachment upload/download E2E validation
+- Production secret-management approach
+- Monitoring/log retention/alerting
+- Telegram webhook/public callback path
+- Final production bot/channel identity
+- Production hardening and capacity configuration
+
+Therefore the core hosted Chatwoot environment setup is complete for the current validation/dress-rehearsal stage, but the environment is not yet being treated as production-ready.
+
+## Support bot / channel onboarding reference
+
+WISE Support channel onboarding must remain separate from infrastructure setup. The bot identity is customer-facing; infrastructure environment names should not leak into that identity.
+
+### Current dress-rehearsal bot
+- Telegram bot: @wise_chatwoot_poc_bot
+- Purpose: temporary integration/dress-rehearsal bot for the Chatwoot Telegram channel
+- Status: approved for the current Ops demo/test run
+- Its poc naming is intentionally temporary and should not be presented as the eventual patient-facing bot identity.
+
+### Existing WISE Support bot — DO NOT MIX
+The existing WISE Support bot @wescura_support_bot is a separate integration and uses its own credential/configuration. It must not be reused as the Chatwoot Telegram channel credential during this dress rehearsal.
+
+### Final patient-facing bot — TBD after Ops demo
+Candidate patient-facing identities discussed for the eventual support entry point:
+- @wise_health_support_bot
+- @wescura_medicines_support_bot
+
+Final selection is intentionally deferred until the Ops demo/handover. The chosen production bot should be documented as a separate channel onboarding record rather than replacing the historical dress-rehearsal bot record.
+
+### Telegram onboarding checklist
+For each new Chatwoot Telegram bot/channel, the repeatable onboarding procedure should capture:
+1. Create/identify the Telegram bot and confirm its intended patient-facing name/handle.
+2. Store the bot credential only in the deployment/Chatwoot secret configuration; never commit or record the token in Git/docs.
+3. In Chatwoot, create the Telegram channel using the dedicated bot credential.
+4. Associate the channel with the intended Chatwoot account/inbox.
+5. Confirm the Telegram webhook/callback reaches the Chatwoot Web endpoint through the final ingress path.
+6. Verify inbound Telegram message → Chatwoot contact/conversation → Sidekiq processing.
+7. Verify Chatwoot agent reply → Telegram delivery.
+8. Record the resulting Chatwoot Account/Inbox/Channel identifiers and non-secret bot metadata in the environment handover.
+9. Record how to repeat the onboarding for a replacement/new bot, including webhook setup/verification and credential rotation.
+
+The current @wise_chatwoot_poc_bot run is therefore intentionally useful as a dress rehearsal of the repeatability of bot onboarding, not merely as a disposable technical test.
+
+
+#### Telegram Chatwoot channel onboarding — dress rehearsal — 2026-09-30
+The first repeatability pass for Chatwoot Telegram channel onboarding was completed using the dedicated temporary bot `@wise_chatwoot_poc_bot`. The Chatwoot UI exposed a four-step flow: Choose Channel → Create Inbox → Add Agents → Voilà.
+
+Observed onboarding sequence:
+1. Choose **Telegram** as the channel/provider.
+2. The Telegram channel setup screen presented a single required **Bot Token** field and a **Create Telegram Channel** action. The UI text explicitly states that the token is obtained from Telegram BotFather.
+3. After submitting the dedicated POC bot token, Chatwoot proceeded to the **Add Agents** step and suggested the currently logged-in superadmin/administrator as the default agent.
+4. Adding that suggested administrator completed the flow and produced the **Your Inbox is ready!** confirmation screen, including a QR code for quickly testing the Telegram inbox and actions for **More settings** and **Take me there**.
+
+No bot credential is recorded here. The credential used for this rehearsal remains separate from the existing `@wescura_support_bot` integration.
+
+This confirms that, for the current Chatwoot build, a new Telegram bot/channel can be onboarded through a short UI flow without manually configuring additional provider fields during the initial channel-creation screen. The next dress-rehearsal checkpoint is to inspect the created inbox/channel metadata and then validate inbound Telegram → Chatwoot → Sidekiq and Chatwoot agent reply → Telegram delivery.
+
+
+#### Telegram inbox configuration inspected — dress rehearsal — 2026-09-30
+The created Telegram inbox `wise_chatwoot_poc_bot` was opened under Chatwoot Settings → Inboxes. The observed Settings screen shows:
+- Inbox name: `wise_chatwoot_poc_bot`
+- Telegram handle displayed: `@wise_chatwoot_poc_bot`
+- Help Center: no Help Center selected
+- Conversation Routing: **Create new conversations** is selected; the UI describes this as creating a new conversation each time after the previous one is resolved. **Reopen same conversation** is available but not selected.
+- Channel greeting: **Enable channel greeting** is currently off.
+- The screen exposes an **Update** action, but no settings were changed during this inspection.
+- Additional tabs visible for the inbox are **Collaborators**, **Business Hours**, **CSAT**, and **Bot Configuration**.
+
+This checkpoint records the actual defaults observed after Telegram channel/inbox creation. The next inspection should focus on the **Bot Configuration** tab before changing any behaviour or performing the live Telegram message test.
+
+
+## Smoke testing / E2E integration validation
+
+### OCI Chatwoot Telegram + auto-assignment E2E — 2026-10-01
+
+The OCI dress rehearsal completed a full Telegram → Chatwoot → Sidekiq → agent-assignment validation using the dedicated temporary Telegram bot `@wise_chatwoot_poc_bot`. This is recorded as an **E2E smoke/integration test**, separate from the core OCI environment-setup completion status.
+
+Validated path:
+
+```text
+Telegram patient message
+  → OCI public HTTPS / Nginx
+  → Chatwoot Telegram webhook
+  → Chatwoot Sidekiq
+  → Contact / Conversation
+  → AutoAssignment::AssignmentJob
+  → configured support agent
+```
+
+The reverse Chatwoot → Telegram reply path had already been validated in the same dress rehearsal.
+
+#### Auto-assignment diagnostic and final validation
+
+The initial Telegram conversation appeared as **Unassigned** even though the Chatwoot UI showed the configured agent as Online. The investigation traced the actual Chatwoot 4.14.2 assignment path:
+
+- Inbox auto-assignment enabled.
+- Account `assignment_v2` feature enabled.
+- User 1 is an Inbox collaborator.
+- Account-scoped availability is `online` (`availability = 0`).
+- Redis round-robin queue contained User 1.
+- Rate limiting was not excluding the agent.
+- `Inbox#available_agents` depends on `OnlineStatusTracker` runtime presence, not only the persisted availability column.
+- The exact Chatwoot image uses a 20-second `PRESENCE_DURATION`.
+- The frontend Action Cable client is configured with a 20-second presence heartbeat.
+- Browser DevTools confirmed the `/cable` connection was active and `RoomChannel` presence messages were being exchanged.
+- A live Redis check showed User 1 present and online when the heartbeat was fresh.
+- When the presence timestamp aged beyond the 20-second server window, `OnlineStatusTracker.get_available_users(1)` returned no users and `inbox.available_agents` became empty.
+- Therefore the observed Unassigned state was caused by the agent's **runtime presence falling outside the 20-second eligibility window**, not by Inbox membership, auto-assignment configuration, Redis round-robin state, or the assignment service itself.
+
+The final controlled assignment test was run while User 1 was demonstrably online:
+
+- Before: Conversation 1 `assignee_id = nil`.
+- Presence: User 1 reported as `online`.
+- `AutoAssignment::AssignmentJob` executed successfully.
+- Chatwoot assigned Conversation 1 to User 1.
+- Assignment/activity and Action Cable events were emitted.
+- After: Conversation 1 `assignee_id = 1`, status remained `open`.
+- The job reported: `Assigned 1 conversations for inbox 1`.
+
+This proves that the **OCI Chatwoot auto-assignment path is functionally working end-to-end when the configured agent has fresh server-side presence**.
+
+#### Reverse Chatwoot → Telegram reply E2E — 2026-10-02
+
+The reverse direction was then validated using the same assigned Telegram conversation. The support agent sent a reply from the Chatwoot portal/inbox, and the message was received by the patient-side Telegram client for @wise_chatwoot_poc_bot.
+
+Observed result:
+- Chatwoot conversation remained assigned to the configured support agent.
+- Support-agent reply was visible as an outgoing message in the Chatwoot conversation.
+- The same reply was delivered to the Telegram client.
+- The screenshot captured the corresponding outgoing Chatwoot message and the received Telegram message with matching content/time.
+
+This completes the functional two-way dress-rehearsal path:
+
+```text
+Patient Telegram
+  → Chatwoot Telegram webhook
+  → Chatwoot / Sidekiq
+  → Conversation / AutoAssignment
+  → Support Rep in Chatwoot
+  → Chatwoot outbound Telegram delivery
+  → Patient Telegram
+```
+
+Together with the earlier inbound and assignment validation, this provides functional E2E evidence for both directions of the current OCI Chatwoot Telegram integration. This remains a dress-rehearsal/test-bot validation using @wise_chatwoot_poc_bot; it is not yet the final patient-facing production bot/channel.
+
+
+#### Presence hardening observation
+
+The current Chatwoot configuration has effectively zero timing margin:
+
+```text
+Client presence heartbeat: 20 seconds
+Server presence validity:   20 seconds
+```
+
+The dress rehearsal therefore exposed a potential operational edge case: browser scheduling, temporary WebSocket/network delay, or similar timing variance can allow the server-side presence record to expire before the next heartbeat arrives.
+
+No change was made to `PRESENCE_DURATION`, `auto_offline`, agent availability, Redis state, or assignment code during this test. This should be treated as a **separate production-hardening decision**, not as a prerequisite for the basic OCI environment setup.
+
+The validated E2E result should therefore be read as:
+
+> Auto-assignment works correctly with fresh agent presence; production hardening should separately establish an appropriate presence/heartbeat safety margin.
+
+
+
+## Telegram webhook ownership guardrail — 2026-10-01
+
+Telegram permits only one active webhook per bot. Because the same bot may be exercised against local, validation, or production environments at different times, **webhook ownership must be checked immediately before sending test traffic**.
+
+### Mandatory pre-test check
+
+For the intended bot, run:
+
+```bash
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo"
+```
+
+Inspect at minimum:
+- `url`
+- `pending_update_count`
+- `last_error_date`
+- `last_error_message`
+
+Do not send patient/test traffic until the reported `url` matches the environment being tested.
+
+### Set a webhook
+
+Generic form:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -d "url=https://<PUBLIC_HOST>/webhooks/telegram/$TELEGRAM_BOT_TOKEN"
+```
+
+Chatwoot's Telegram channel implementation registers its callback using the Chatwoot `FRONTEND_URL` followed by:
+
+```text
+/webhooks/telegram/<bot_token>
+```
+
+The token must be supplied from the environment/secret store and must never be committed to Git or written into this document.
+
+### Delete a webhook
+
+Use this only when deliberately transferring the bot to polling/fallback or another webhook owner:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/deleteWebhook"
+```
+
+Do not use `deleteWebhook` as an exploratory diagnostic; `getWebhookInfo` is the non-destructive check.
+
+### Current local WISE Support ownership
+
+The existing `@wescura_support_bot` is currently pointed at the local development callback:
+
+```text
+https://thirty-stock-arrogance.ngrok-free.dev/api/webhooks/telegram-support
+```
+
+Therefore, before testing the existing direct WISE Support path, confirm that URL is still registered. Render production will not receive that bot's Telegram traffic while the ngrok URL owns the webhook.
+
+### Current Chatwoot POC ownership
+
+`@wise_chatwoot_poc_bot` is the dedicated Chatwoot dress-rehearsal bot and must remain separate from `@wescura_support_bot`.
+
+For a Chatwoot deployment whose public base URL is `https://<PUBLIC_HOST>`, the Chatwoot Telegram webhook is:
+
+```text
+https://<PUBLIC_HOST>/webhooks/telegram/<POC_BOT_TOKEN>
+```
+
+The current OCI Chatwoot validation instance does **not yet have public HTTPS ingress**, so there is no valid production Chatwoot URL to register for `@wise_chatwoot_poc_bot` yet. Do not point the POC bot at `go.wisehealth.in`; that hostname currently serves the WISE backend, not the OCI Chatwoot Web container.
+
+Once the OCI Chatwoot public ingress/TLS endpoint is established, set the POC bot with:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$CHATWOOT_POC_BOT_TOKEN/setWebhook" \
+  -d "url=https://<PUBLIC_CHATWOOT_HOST>/webhooks/telegram/$CHATWOOT_POC_BOT_TOKEN"
+```
+
+Then immediately verify:
+
+```bash
+curl "https://api.telegram.org/bot$CHATWOOT_POC_BOT_TOKEN/getWebhookInfo"
+```
+
+This check/set/check sequence is the required operational pattern before the live Chatwoot Telegram dress rehearsal.
+
+
+## Dress-rehearsal change history
+
+For the chronological record of the environment changes made during the hosted Chatwoot + Telegram dress rehearsal, see:
+
+`docs/WISE-SUPPORT-DRESS-REHEARSAL-ENVIRONMENT-CHANGELOG-2026-10-02.md`
+
+That companion document records the Render validation attempt/archival, OCI VM and networking setup, Docker/runtime installation, GHCR image selection, PostgreSQL/pgvector migration, Redis, Chatwoot Web/Sidekiq bootstrap, Nginx/HTTPS/SELinux/firewall changes, Telegram webhook and Chatwoot channel onboarding, auto-assignment diagnostics, and attachment/welcome-message validation.
+
+Use the present document for the **current environment reference**; use the companion changelog when reconstructing **what was actually changed during the dress rehearsal and which changes are temporary validation assumptions**.

@@ -52,10 +52,15 @@ The wider WISE/Wescura architecture remains documented in `wisedoctor/quick-chat
 | [WISE Support Channels and Providers](./WISE-SUPPORT-CHANNELS-AND-PROVIDERS.md) | Channel abstraction and provider abstraction; Telegram/Chatwoot is the first proven implementation |
 | [WISE Support Context, Routing and Engagement](./WISE-SUPPORT-CONTEXT-ROUTING-ENGAGEMENT.md) | User/context awareness, need classification, routing and contextual discovery of relevant WISE capabilities |
 | [WISE Support Operations](./WISE-SUPPORT-OPERATIONS.md) | Support Rep/Ops servicing model, patient-safe guardrails and operational readiness |
+| [WISE Support Environment Reference](./WISE-SUPPORT-ENVIRONMENT-REFERENCE.md) | Infrastructure choices and alternatives retained for validation and future production decisions |
+| [WISE Support Environment Matrix](./WISE-SUPPORT-ENVIRONMENT-MATRIX.md) | Development/validation/production environment separation and production decision gates |
+| [WISE Support Production & Maintenance](./WISE-SUPPORT-PRODUCTION-MAINTENANCE.md) | Concrete deployment, maintenance, debugging and E2E operational learnings |
 
 ## Documentation rule
 
 These documents describe the **stable architecture and contracts**. They should not become a second copy of every product's implementation detail. Domain applications remain authoritative for their own workflows and data.
+
+Environment and maintenance documents record implementation learnings and operational procedures without making those implementation details part of the conceptual Support contract.
 
 When a new channel or provider is introduced, extend the appropriate Support document rather than redefining the Support architecture inside that channel's implementation.
 
