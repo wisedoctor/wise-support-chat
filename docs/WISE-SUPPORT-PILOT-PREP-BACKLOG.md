@@ -647,3 +647,47 @@ The next step is controlled OCI runtime validation using the immutable digest. P
 6. existing two-way text E2E remains green.
 
 After this runtime check, update the pilot-prep sequence to the remaining context-handoff and production entry-point audit work before the RBAC/initial hand-off milestone.
+
+
+---
+
+## 31. Telegram Welcome / /start runtime result — 2026-10-06
+
+**Status: PASS — runtime-proven**
+
+The corrected Telegram Welcome implementation has now passed the controlled OCI runtime test.
+
+### Proven
+
+- Exact immutable candidate image deployed:
+  `ghcr.io/wisedoctor/wise-support-chat@sha256:fc11023a6f146ca475bd003a2071d6dc54f0dbaa2d3c868c792e8f1acad3df19`
+- WEB healthy and HTTPS returned 200.
+- WORKER healthy and processing Sidekiq jobs.
+- Deep-link entry `https://t.me/wise_chatwoot_poc_bot?start=support` reached Chatwoot as `/start support`.
+- WISE Support welcome appeared in the Chatwoot conversation.
+- WISE Support welcome was delivered back to Telegram.
+- Three separate deliberate start events each produced one expected welcome.
+
+### Root-cause correction recorded
+
+The first candidate used a populated `source_id` as the welcome idempotency marker. Chatwoot then treated the synthetic outgoing welcome as channel-originated and suppressed channel delivery.
+
+The corrected implementation:
+- leaves `source_id` unset;
+- stores the Telegram start message ID in `additional_attributes.telegram_start_message_id`;
+- remains idempotent without triggering Chatwoot's outbound-origin guard.
+
+### UX interpretation
+
+Telegram may display the technical command as `/start` in its client UI while Chatwoot receives the deep-link-qualified `/start support` webhook content. This distinction is internal and is not considered patient-facing friction because the patient immediately sees the WISE Support welcome.
+
+### Pilot disposition
+
+Move the backlog item from open implementation/testing to **PASS for the tested POC flow**.
+
+The next active sequence is:
+1. context handoff;
+2. production entry-point audit;
+3. RBAC + initial operational hand-off.
+
+Do not alter `@wescura_support_bot` as part of this workstream.
