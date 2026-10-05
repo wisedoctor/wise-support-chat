@@ -606,3 +606,44 @@ The fix is not yet marked closed. Controlled OCI validation must:
 
 Do not change the three unrelated conversation-selection behaviours as part of this workstream.
 \n\n## 27. Telegram retry/idempotency OCI validation result — 2026-10-03\n\n**Status: PASS — controlled runtime validation completed**\n\nThe published retry/idempotency image was rolled out to the OCI rehearsal WEB and WORKER containers using the immutable GHCR digest:\n\n`ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`\n\n### Runtime validation\n\n- WEB started successfully on the candidate image and returned HTTP 200 locally.\n- WORKER started successfully and connected to Redis/Sidekiq normally.\n- Both containers retained `FRONTEND_URL=https://support.wisehealth.in`.\n- Both retained the proven OCI S3-compatible Active Storage configuration.\n- PostgreSQL, Redis, Nginx, DNS/TLS and Telegram webhook ownership were not changed.\n- The prior WEB/WORKER containers were retained as rollback artifacts.\n\n### Fresh Telegram attachment test\n\nA fresh inbound document was sent through the rehearsal bot `@wise_chatwoot_poc_bot`. The Chatwoot portal at `https://support.wisehealth.in` showed **exactly one inbound message** and the attachment **opened/downloaded successfully**. No duplicate message was observed.\n\nThis is the first controlled OCI runtime validation of the retry/idempotency candidate and materially closes the previously observed duplicate-message + inbound-attachment retrieval gap for the tested document path.\n\n### Important interpretation\n\nThe successful test proves the tested end-to-end document path on the new OCI runtime and provides runtime evidence for the application-level retry/idempotency fix. It does not by itself prove every image/media variant or every possible Telegram retry scenario. Those remain appropriate regression cases.\n\n### Container-name note\n\nPost-test diagnostic commands that referenced `wise-support-chat-web` / `wise-support-chat-worker` returned “No such container” after the rollout state changed. This is a diagnostic-name mismatch, not evidence of runtime failure: the candidate containers had already been observed healthy and the browser-visible Telegram test passed. Do not infer service failure from those name-resolution errors alone; inspect current `docker ps -a` names before further diagnostics.\n\n### Next gate\n\nKeep the candidate runtime and rollback containers intact. Update the pilot smoke-test/backlog status from “OCI validation pending” to **OCI document retry/idempotency validation PASS**, while keeping the broader attachment gate open for image/Rx and repeated-event regression as required.\n\n\n## 28. Full inbound attachment + assignment regression — 2026-10-03\n\n**Status: PASS — document + image inbound attachments, no duplicates, Mine Inbox assignment, and replies**\n\nThe OCI candidate runtime was further validated with both a fresh document and a fresh image sent through `@wise_chatwoot_poc_bot`.\n\nObserved results:\n\n- Telegram → Chatwoot document: **PASS**; attachment opened successfully.\n- Telegram → Chatwoot image: **PASS**; attachment opened/rendered successfully.\n- No duplicate Chatwoot messages were observed for either inbound attachment.\n- Both inbound messages landed in the Support Rep's **Mine** inbox.\n- Support Rep replies were delivered back to Telegram successfully.\n- The screenshot captured the two inbound attachment messages and the corresponding reply flow in the same rehearsal conversation.\n\nThis materially closes the previously open inbound attachment/retrieval and duplicate-message concerns for the tested document + image scenarios, and also provides positive assignment evidence for the current rehearsal configuration.\n\nThe broader assignment/inbox workstream remains open for formal SOP coverage of Inbox vs Conversation vs Mine/Unassigned and lifecycle/re-entry cases.\n\n\n## 29. Assignment / Inbox / Conversation checkpoint — 2026-10-03\n\n**Status:** Tested path PASS; formal lifecycle SOP coverage remains\n\nThe latest OCI media regression also provided positive assignment evidence: the fresh inbound document and image messages appeared in the Support Rep's **Mine** inbox, with successful replies back to Telegram.\n\nThis changes the assignment workstream from an unresolved runtime question to a focused operational-SOP exercise. The remaining cases are Unassigned handling, resolution/re-entry, continuation vs new conversation semantics, and refresh/re-entry consistency.\n\nA dedicated operating-model record has been added:\n\n`docs/WISE-SUPPORT-ASSIGNMENT-INBOX-CONVERSATION-SOP-2026-10-03.md`\n\nThe next pilot-prep slice is therefore **Welcome message / Telegram /start UX**, followed by context handoff and production entry-point audit.\n
+
+## 30. Telegram welcome/start candidate publication — 2026-10-05
+
+**Status:** Local validation PASS; GHCR publication PASS; OCI runtime validation pending
+
+The Welcome / Telegram /start slice has progressed from UX discovery to a controlled implementation candidate.
+
+### Candidate behaviour
+
+- WISE deep-link entry uses Telegram /start support.
+- The technical /start support inbound message is not stored as the patient's visible inbound message.
+- Chatwoot creates a WISE Support welcome message instead.
+- The matcher is deliberately scoped to /start support; ordinary /start is not intercepted.
+- The existing @wescura_support_bot path remains untouched.
+
+### Local validation
+
+Focused Telegram service suite:
+
+    33 examples, 0 failures
+
+### Published candidate
+
+    ghcr.io/wisedoctor/wise-support-chat:sha-40450cdd0
+
+Immutable registry digest:
+
+    sha256:0b1c591f56a1e7ad180f67a0646ca6fc04b957abcd01fbb96f2e183eef467d5b
+
+### Remaining validation
+
+The next step is controlled OCI runtime validation using the immutable digest. Preserve the current stable hostname, Telegram webhook, OCI Active Storage, PostgreSQL and Redis configuration. Validate:
+
+1. /start support enters the expected Chatwoot conversation;
+2. the technical command is not presented as the patient-facing message;
+3. the WISE welcome reaches Telegram;
+4. the patient can immediately reply;
+5. no duplicate welcome/message loop is created;
+6. existing two-way text E2E remains green.
+
+After this runtime check, update the pilot-prep sequence to the remaining context-handoff and production entry-point audit work before the RBAC/initial hand-off milestone.
