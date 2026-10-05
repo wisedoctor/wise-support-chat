@@ -190,3 +190,50 @@ The immutable candidate remains the controlled OCI rollout target:
 `ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`
 
 The image is therefore **locally validated for the intended retry/idempotency slice; OCI runtime validation remains pending**.
+
+
+## 2026-10-05 Telegram welcome/start candidate publication
+
+**Status:** GHCR publication and registry verification PASS; OCI runtime validation pending
+
+The Telegram /start support welcome candidate was finalized on branch feature/telegram-start-welcome.
+
+### Source commits
+
+- 40450cdd0 — test: configure compose harness for test gems
+- bc3361382 — fix(telegram): scope welcome to support start command
+- 5beb25557 — test: parameterize postgres credentials
+
+The application matcher is deliberately scoped to **/start support** so ordinary /start handling is not changed.
+
+### Local validation
+
+The focused Telegram service suite passed after the final matcher correction:
+
+    33 examples, 0 failures
+
+The local test harness was also corrected to install the development/test Bundler groups; rspec-core 3.13.0 was confirmed available.
+
+### Published image
+
+Tag:
+
+    ghcr.io/wisedoctor/wise-support-chat:sha-40450cdd0
+
+Registry image-index digest:
+
+    sha256:0b1c591f56a1e7ad180f67a0646ca6fc04b957abcd01fbb96f2e183eef467d5b
+
+Registry inspection confirmed an OCI image index, a linux/amd64 runtime manifest, and the expected unknown/unknown attestation manifest.
+
+### Immutable deployment reference
+
+Use the digest rather than the mutable tag for OCI validation:
+
+    ghcr.io/wisedoctor/wise-support-chat@sha256:0b1c591f56a1e7ad180f67a0646ca6fc04b957abcd01fbb96f2e183eef467d5b
+
+### Next controlled step
+
+Deploy this candidate to OCI WEB + WORKER only, preserving the proven stable HTTPS ingress, Telegram POC webhook, PostgreSQL, Redis and OCI Active Storage configuration. Runtime validation must prove that /start support produces the WISE welcome and that the welcome is delivered back to the Telegram patient without duplicate/loop behaviour.
+
+Do not change @wescura_support_bot or its webhook as part of this validation.
