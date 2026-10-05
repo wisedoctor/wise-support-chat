@@ -927,3 +927,55 @@ Replace WEB + WORKER only with the exact immutable digest, preserving the existi
 
 Then perform one fresh `?start=support` test with `@wise_chatwoot_poc_bot`. Expected result: Telegram sends `/start support`; Chatwoot stores the technical command; the WISE welcome is delivered to Telegram exactly once; patient reply remains in the same conversation. A repeated/retried start event must not create a second welcome.
 
+
+
+## Latest promotion / runtime checkpoint — 2026-10-06
+
+**Status: PASS — Telegram Welcome runtime proven; WISE Health application main promoted**
+
+The corrected Telegram Welcome implementation is now proven on the OCI rehearsal runtime, and the companion WISE Health application changes have been promoted to `quick-chat-landing/main`.
+
+### Support runtime result
+
+- Corrected immutable image: `ghcr.io/wisedoctor/wise-support-chat@sha256:fc11023a6f146ca475bd003a2071d6dc54f0dbaa2d3c868c792e8f1acad3df19`.
+- WEB healthy; HTTPS through `support.wisehealth.in` returned 200.
+- WORKER healthy; Sidekiq connected to Redis and processed scheduled jobs.
+- Deep-link `https://t.me/wise_chatwoot_poc_bot?start=support` reached Chatwoot as `/start support`.
+- WISE Support welcome appeared in Chatwoot and was delivered back to Telegram.
+- Three deliberate start events each produced the expected welcome; these were separate events, not duplicate processing of one event.
+
+### Why the corrected implementation matters
+
+The first candidate stored its idempotency marker in `source_id`. Chatwoot's outbound channel guard interprets populated `source_id` as channel-originated, so the welcome was persisted but not delivered through Telegram. The corrected implementation leaves `source_id` unset and stores the Telegram start-message identifier in `additional_attributes.telegram_start_message_id`, preserving idempotency without blocking channel delivery.
+
+### Telegram /start observation
+
+Telegram may display `/start` in its client UI while Chatwoot receives `/start support` from the deep-link webhook payload. This is accepted as an internal technical distinction. The patient-facing outcome is the WISE Support welcome; no further work is required to make the technical command itself display as `/start support`.
+
+### WISE Health application promotion
+
+The companion `quick-chat-landing` changes are now on remote `main`:
+
+- native `/support` route/page;
+- Support navigation/footer entry points;
+- `SupportChatWidget` application integration;
+- Care Partner Telegram rehearsal CTA using the POC deep link;
+- existing `@wescura_support_bot` path remains untouched.
+
+Remote `main` was verified at:
+
+```
+48813329dcc8b3d2881ec3ee8639462d4543b8c5
+```
+
+This establishes the intended repository boundary: `quick-chat-landing` owns the WISE Health application/entry-point experience, while `wise-support-chat` owns the Chatwoot/provider-specific Support implementation and operational runtime.
+
+### Next milestone
+
+With the Welcome / /start gate closed, return to the remaining pilot-prep sequence:
+
+1. context handoff;
+2. production entry-point audit;
+3. then RBAC + initial operational hand-off.
+
+The final patient-facing Telegram bot identity and production hardening remain separate decisions.
