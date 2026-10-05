@@ -224,3 +224,25 @@ Do not alter Nginx, DNS/TLS, PostgreSQL, Redis, Telegram webhook ownership, or e
 **Corrected OCI deployment:** PENDING
 
 **Telegram-visible welcome E2E:** PENDING
+
+## Corrected `/start support` image — OCI pull verified 2026-10-06
+
+The corrected application image has completed the publication gate and has been pulled to the OCI validation VM by immutable digest.
+
+- branch: `feature/telegram-start-welcome`
+- latest code/docs commit at time of publication: `a355512ab162e60a1d3329f16256e0cd95105e75`
+- image tag: `ghcr.io/wisedoctor/wise-support-chat:sha-a355512a`
+- registry image-index digest: `sha256:fc11023a6f146ca475bd003a2071d6dc54f0dbaa2d3c868c792e8f1acad3df19`
+- linux/amd64 manifest: `sha256:3e3f937932d6f604870eb50f9afeef533f22eb6021eeba1893a6e049439f1a91`
+- OCI pull: PASS
+- OCI `RepoDigests`: confirmed exact image-index digest
+- OCI image ID: `sha256:fc11023a6f146ca475bd003a2071d6dc54f0dbaa2d3c868c792e8f1acad3df19`
+
+The currently running OCI WEB + WORKER candidate (`sha256:0b1c591f56a1...`) remains the rollback baseline and has not been replaced yet.
+
+### Next gate
+
+Perform an image-only WEB + WORKER replacement using the exact immutable digest above. Preserve the captured environment files and current rollback containers. Do not alter Nginx, DNS/TLS, PostgreSQL, Redis, Active Storage configuration, Telegram webhook ownership, or either bot identity.
+
+After replacement, validate container startup and HTTPS first, then perform the fresh `/start support` Telegram E2E. The final gate remains Telegram-visible WISE welcome delivery, same-conversation patient reply, and retry-safe single welcome.
+
