@@ -190,3 +190,37 @@ The immutable candidate remains the controlled OCI rollout target:
 `ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`
 
 The image is therefore **locally validated for the intended retry/idempotency slice; OCI runtime validation remains pending**.
+
+## /start support delivery fix — 2026-10-06
+
+The previously published /start support candidate (image-index digest sha256:0b1c591f56a1e7ad180f67a0646ca6fc04b957abcd01fbb96f2e183eef467d5b) was deployed and runtime-validated, but the WISE welcome was not delivered to Telegram.
+
+Forensic evidence showed Telegram was correctly sending /start support and Chatwoot was creating the outgoing welcome, but the welcome used source_id as its idempotency marker. Chatwoot's outbound channel guard interprets a populated source_id as channel-originated and therefore skipped Telegram delivery.
+
+The fix on feature/telegram-start-welcome removes source_id from the welcome message, while retaining retry idempotency in additional_attributes.telegram_start_message_id.
+
+### Corrected source commits
+
+- 583455f9445d41467c83d9af1c27e42dc9499ab9 — fix(telegram): keep start welcome eligible for channel delivery
+- 4a985aae696aa8cb94247f215976fc4c0a750456 — test(telegram): keep start welcome idempotent and deliverable
+- preceding /start support candidate commits remain part of the branch history.
+
+### Required publication sequence
+
+1. Run the focused IncomingMessageService RSpec suite locally.
+2. Confirm the new test covers both `source_id` remaining nil and duplicate-start suppression.
+3. Build a new linux/amd64 image from the corrected branch.
+4. Publish a new immutable GHCR tag/digest.
+5. Verify the registry digest before deployment.
+6. On OCI, preserve the current 0b1c591f56a1... candidate as rollback and replace WEB + WORKER only.
+7. Verify HTTPS 200, WEB/WORKER health, OCI Active Storage and FRONTEND_URL.
+8. Run the Telegram /start support welcome E2E.
+9. Run normal two-way text regression and one duplicate/retry start check.
+
+Do not alter Nginx, DNS/TLS, PostgreSQL, Redis, Telegram webhook ownership, or either Telegram bot as part of this fix.
+
+**Corrected image publication:** PENDING
+
+**Corrected OCI deployment:** PENDING
+
+**Telegram-visible welcome E2E:** PENDING
