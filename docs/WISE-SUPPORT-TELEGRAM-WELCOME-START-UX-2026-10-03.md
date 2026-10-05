@@ -166,3 +166,52 @@ Only minimum necessary, safe, non-clinical context should cross the Support boun
 **Implementation:** CANDIDATE — narrow `/start support` handling is implemented on `feature/telegram-start-welcome`; local focused test and OCI runtime validation are still required.
 
 **Next input:** record the results of Test A/B/C, then decide whether the pilot needs only CTA copy/configuration or a narrowly scoped implementation change.
+
+## 10. OCI runtime forensic finding — 2026-10-06
+
+The first OCI runtime validation of the /start support candidate proved that Telegram deep-link handling is working correctly:
+
+- Telegram sent the webhook payload with text: "/start support".
+- Chatwoot persisted the technical /start support as an inbound message for the conversation.
+- The candidate IncomingMessageService created the WISE welcome message with source_id: "telegram_start:<message_id>".
+- Chatwoot created and enqueued SendReplyJob for the welcome message.
+- The welcome did not reach Telegram.
+
+The root cause is Chatwoot's normal outbound-channel guard. Base::SendOnChannelService treats any outgoing message with a populated source_id as having originated from the channel and therefore does not send it through the channel transport. The candidate implementation had used source_id as the /start support idempotency marker, so the welcome was incorrectly classified as channel-originated.
+
+The Chatwoot portal evidence also confirms the /start support inbound event itself is present in the conversation; the failure was specifically the outbound welcome delivery, not Telegram parameter handling.
+
+### Corrected implementation
+
+The welcome message now:
+
+- remains message_type: outgoing;
+- leaves source_id unset so the normal Telegram SendReplyJob path can deliver it;
+- stores the originating Telegram message id in additional_attributes.telegram_start_message_id as the idempotency marker;
+- ignores a retry of the same Telegram /start support event without creating a second welcome.
+
+This preserves both required behaviours: deliverable outbound message and retry-safe welcome creation.
+
+### Required runtime validation
+
+After the corrected image is published and deployed to OCI WEB + WORKER:
+
+1. send one fresh ?start=support deep-link invocation;
+2. confirm the WISE welcome appears in the Telegram client;
+3. confirm the welcome appears once in Chatwoot and is outgoing;
+4. confirm the technical /start support is not shown to the patient as the welcome content;
+5. send a normal patient reply and confirm it remains in the same conversation;
+6. confirm no duplicate welcome is produced by a repeated/retried start event;
+7. retain the current immutable OCI image as rollback until this validation passes.
+
+## 11. Current disposition
+
+Deep-link parameter handling: PASS — Telegram and webhook preserve /start support.
+
+Candidate implementation: corrected — outbound welcome idempotency no longer uses source_id.
+
+Local focused validation: pending for the corrected code/image.
+
+OCI runtime validation: pending for the corrected image.
+
+Pilot disposition: keep the /start support slice open until Telegram-visible welcome delivery and retry-safe behaviour are proven end-to-end.
