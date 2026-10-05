@@ -909,3 +909,21 @@ Expected sequence:
 12. update the welcome UX, GHCR checkpoint, smoke-test and backlog documents with the final result.
 
 Do not change Nginx, DNS/TLS, PostgreSQL, Redis, Telegram webhook ownership, or either Telegram bot as part of this fix.
+
+## Latest deployment checkpoint — 2026-10-06
+
+The corrected `/start support` implementation is now locally tested, published and pulled to OCI by immutable digest.
+
+- focused RSpec: `33 examples, 0 failures`
+- GHCR tag: `sha-a355512a`
+- immutable deploy digest: `sha256:fc11023a6f146ca475bd003a2071d6dc54f0dbaa2d3c868c792e8f1acad3df19`
+- OCI pull/digest verification: PASS
+- current running WEB + WORKER: still previous `sha256:0b1c591f56a1...` candidate
+- rollback baseline: preserved
+
+### User next action
+
+Replace WEB + WORKER only with the exact immutable digest, preserving the existing environment snapshots and rollback containers. Validate container health and HTTPS before testing Telegram.
+
+Then perform one fresh `?start=support` test with `@wise_chatwoot_poc_bot`. Expected result: Telegram sends `/start support`; Chatwoot stores the technical command; the WISE welcome is delivered to Telegram exactly once; patient reply remains in the same conversation. A repeated/retried start event must not create a second welcome.
+
