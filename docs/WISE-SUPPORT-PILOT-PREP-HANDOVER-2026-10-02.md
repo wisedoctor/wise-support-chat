@@ -921,3 +921,81 @@ Validate in this order:
 8. retain rollback image/runtime until the result is recorded.
 
 If this passes, the Welcome/start workstream can be marked runtime-proven and the next pilot-prep work returns to context handoff and production entry-point audit before RBAC + initial hand-off.
+
+
+---
+
+## 31. Telegram /start welcome runtime gate — 2026-10-06
+
+**Status: PASS — corrected implementation proven on OCI rehearsal runtime**
+
+The controlled rollout of the corrected Telegram Welcome /start implementation has now been completed and validated end-to-end.
+
+### Why the correction was required
+
+The first implementation created the synthetic WISE welcome message with a Telegram-derived `source_id` used as an idempotency marker. Chatwoot's outbound channel guard interprets a populated `source_id` as evidence that the outgoing message originated from the channel. As a result, the welcome was persisted and a send job was queued, but channel delivery was suppressed.
+
+The corrected implementation deliberately keeps the welcome `source_id` unset and stores the Telegram start-message identifier in:
+
+```
+additional_attributes.telegram_start_message_id
+```
+
+The existing welcome is therefore discoverable for idempotency without being misclassified as a channel-originated outbound message.
+
+### Corrected publication
+
+The corrected branch was published as an immutable GHCR image:
+
+```
+ghcr.io/wisedoctor/wise-support-chat@sha256:fc11023a6f146ca475bd003a2071d6dc54f0dbaa2d3c868c792e8f1acad3df19
+```
+
+The OCI WEB and WORKER were replaced with this exact digest only. PostgreSQL, Redis, Nginx, DNS/TLS, Telegram webhook ownership and the two Telegram bot identities were not changed.
+
+### Runtime validation
+
+- WEB booted successfully; Puma listening on port 3000.
+- HTTPS through `support.wisehealth.in` returned HTTP 200.
+- WORKER booted successfully; Sidekiq connected to Redis and processed scheduled jobs.
+- The existing OCI S3-compatible Active Storage configuration remained intact.
+- The POC deep link `https://t.me/wise_chatwoot_poc_bot?start=support` was exercised.
+- Chatwoot received the technical `/start support` message.
+- Chatwoot displayed the WISE Support welcome.
+- The same welcome was delivered to Telegram.
+- Three deliberate /start support invocations each produced the expected welcome; these were separate start events, not duplicate processing of one event.
+
+The patient-facing outcome is therefore:
+
+```
+WISE CTA
+  ↓
+Telegram deep link
+  ↓
+/start support technical handshake
+  ↓
+Chatwoot
+  ↓
+WISE Support welcome
+  ↓
+patient can type normally
+```
+
+### /start versus /start support observation
+
+During retest, the Telegram client displayed the technical command as `/start`, while Chatwoot recorded the incoming webhook message as `/start support`.
+
+This is not treated as a pilot UX defect. The important integration boundary is that the deep-link parameter reaches the Chatwoot webhook and activates the narrowly scoped `/start support` matcher. Patients do not need to understand the technical parameter; the meaningful patient-facing event is the WISE Support welcome that follows.
+
+Do not change the Telegram client-facing flow merely to make the technical command display as `/start support`.
+
+### Disposition
+
+The **Telegram Welcome / /start UX workstream is PASS** for the tested POC flow.
+
+The next pilot-prep focus returns to:
+1. context handoff;
+2. production entry-point audit;
+3. then RBAC + initial operational hand-off.
+
+The final patient-facing Telegram bot identity remains a separate production-hardening decision. The existing `@wescura_support_bot` path remains untouched.
