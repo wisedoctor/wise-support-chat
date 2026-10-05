@@ -154,3 +154,67 @@ Only minimum necessary, safe, non-clinical context should cross the Support boun
 **Implementation:** DEFERRED — one controlled client + Chatwoot behaviour test is required.
 
 **Next input:** record the results of Test A/B/C, then decide whether the pilot needs only CTA copy/configuration or a narrowly scoped implementation change.
+
+---
+
+## 10. Runtime validation result — 2026-10-06
+
+**Status: PASS — corrected /start welcome implementation proven on OCI**
+
+The implementation moved from the earlier deferred state to a controlled, narrowly scoped candidate.
+
+### What was implemented
+
+The POC path recognizes only:
+
+```
+/start support
+```
+
+Ordinary `/start` handling is not broadly overridden.
+
+A WISE Support welcome is created for the recognized deep-link start event. To keep the welcome eligible for Chatwoot channel delivery while remaining idempotent, the implementation:
+- leaves `source_id` unset;
+- records the originating Telegram start message ID in `additional_attributes.telegram_start_message_id`.
+
+### Why the first candidate failed
+
+The first candidate placed an idempotency value in `source_id`. Chatwoot's outbound channel guard interprets a populated `source_id` as channel-originated, so the welcome was persisted but not delivered through Telegram.
+
+This was corrected without changing Telegram webhook ownership or the existing WISE Support bot.
+
+### Controlled OCI validation
+
+The corrected immutable image:
+
+```
+ghcr.io/wisedoctor/wise-support-chat@sha256:fc11023a6f146ca475bd003a2071d6dc54f0dbaa2d3c868c792e8f1acad3df19
+```
+
+was deployed to WEB + WORKER.
+
+Validation proved:
+- Chatwoot receives `/start support`;
+- WISE Support welcome appears in Chatwoot;
+- WISE Support welcome is delivered to Telegram;
+- patient can continue with a normal message;
+- repeated deliberate start invocations produce the expected welcome without duplicate processing of the same event.
+
+### Telegram UI observation
+
+In the retest, the Telegram client displayed `/start`, while Chatwoot recorded `/start support`.
+
+This is accepted as an internal transport/client presentation detail. The deep-link parameter is reaching the backend correctly, and the patient-facing experience is the welcome message. No further work is required to make the technical command itself display as `/start support`.
+
+### Guardrails retained
+
+- `@wise_chatwoot_poc_bot` remains the rehearsal bot.
+- `@wescura_support_bot` remains untouched.
+- Stable HTTPS ingress remains `support.wisehealth.in`.
+- No PostgreSQL/Redis/Nginx/DNS/TLS changes were made for this fix.
+
+### Decision
+
+**Welcome / /start UX gate: PASS.**
+
+Return focus to context handoff and production entry-point audit, followed by the RBAC + initial operational hand-off milestone.
