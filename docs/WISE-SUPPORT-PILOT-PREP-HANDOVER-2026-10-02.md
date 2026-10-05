@@ -875,3 +875,49 @@ Required validation order:
 
 Do not merge the branch or treat the OCI rollout as complete until this controlled runtime validation is recorded.
 \n\n## Latest OCI retry/idempotency checkpoint — 2026-10-03\n\n**Status: PASS — candidate runtime validated for inbound document + duplicate-message scenario**\n\nThe controlled OCI rollout of the Telegram retry/idempotency candidate is now complete for the tested document scenario.\n\n### Proven\n\n- Immutable candidate image: `ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`.\n- WEB healthy; local HTTP check returned 200.\n- WORKER healthy; Sidekiq connected to Redis and processed jobs.\n- `FRONTEND_URL=https://support.wisehealth.in` preserved.\n- OCI S3-compatible Active Storage configuration preserved on WEB and WORKER.\n- Fresh inbound document through `@wise_chatwoot_poc_bot` appeared as **one Chatwoot message**.\n- Attachment opened/downloaded successfully.\n\n### Interpretation\n\nThis closes the controlled OCI validation step for the targeted inbound document/idempotency scenario. It is not a blanket declaration that all Telegram media variants or all retry permutations are complete. Image/Rx regression and any deliberately repeated-event test can remain as explicit follow-up coverage.\n\n### Operational note\n\nSome post-test log commands returned `No such container: wise-support-chat-worker` / `wise-support-chat-web`. This occurred because the expected container names no longer matched the active container names at the time of those commands. It does not contradict the earlier health checks or the successful end-to-end portal test. Current container names should be enumerated before further diagnostics.\n\n\n## Full inbound media + assignment checkpoint — 2026-10-03\n\nThe candidate OCI runtime has now been validated with both document and image inbound attachments. Both opened successfully in Chatwoot, no duplicate messages were observed, the messages landed in the Support Rep's **Mine** inbox, and replies were received back in Telegram.\n\nThis closes the targeted inbound media/idempotency validation for the tested document + image scenarios. Continue to retain the current runtime and rollback artifacts while the remaining pilot-prep work moves forward.\n\nAssignment behaviour is now positively demonstrated for this scenario, but the separate operational SOP should still document Inbox, Conversation, Mine, Unassigned, resolution and re-entry behaviour before the assignment workstream is formally closed.\n\n\n## Assignment / Inbox operating-model checkpoint — 2026-10-03\n\nThe latest OCI validation confirms the tested assignment path: fresh inbound document and image messages landed in the Support Rep's **Mine** inbox and replies returned successfully to Telegram.\n\nAssignment is now treated as a focused SOP/lifecycle verification item rather than an unresolved implementation defect. The dedicated operating-model document is `docs/WISE-SUPPORT-ASSIGNMENT-INBOX-CONVERSATION-SOP-2026-10-03.md`.\n\nNext pilot-prep slice: Welcome message / Telegram `/start` UX, followed by context handoff and production entry-point audit.\n
+
+## Latest Telegram welcome/start candidate checkpoint — 2026-10-05
+
+**Status:** Local validation PASS; GHCR publication PASS; OCI runtime validation pending
+
+The Welcome / Telegram /start slice has reached a controlled implementation candidate on branch feature/telegram-start-welcome.
+
+Source commits:
+- 40450cdd0 — test: configure compose harness for test gems
+- bc3361382 — fix(telegram): scope welcome to support start command
+- 5beb25557 — test: parameterize postgres credentials
+
+The candidate deliberately intercepts only /start support. Ordinary /start handling is not changed. The existing @wescura_support_bot path remains untouched.
+
+Local focused Telegram service suite:
+
+    33 examples, 0 failures
+
+Published candidate:
+
+    ghcr.io/wisedoctor/wise-support-chat:sha-40450cdd0
+
+Registry image-index digest:
+
+    sha256:0b1c591f56a1e7ad180f67a0646ca6fc04b957abcd01fbb96f2e183eef467d5b
+
+Immutable OCI deployment reference:
+
+    ghcr.io/wisedoctor/wise-support-chat@sha256:0b1c591f56a1e7ad180f67a0646ca6fc04b957abcd01fbb96f2e183eef467d5b
+
+### Next exact validation
+
+Deploy the immutable candidate to OCI WEB + WORKER only. Preserve stable HTTPS ingress, the current Telegram POC webhook, PostgreSQL, Redis, OCI Active Storage and both bot identities.
+
+Validate in this order:
+
+1. container health;
+2. existing two-way Telegram text regression;
+3. fresh /start support deep-link entry;
+4. technical /start support command is not exposed as the patient-facing message;
+5. WISE welcome reaches Telegram;
+6. patient reply reaches the same Chatwoot conversation;
+7. no duplicate welcome/message loop;
+8. retain rollback image/runtime until the result is recorded.
+
+If this passes, the Welcome/start workstream can be marked runtime-proven and the next pilot-prep work returns to context handoff and production entry-point audit before RBAC + initial hand-off.
