@@ -290,3 +290,32 @@ The fix is not yet marked production/pilot complete. The next evidence must come
 
 The attachment gate remains open until inbound media retrieval and duplicate-message behaviour are both proven.
 \n\n## Telegram retry/idempotency OCI validation — 2026-10-03\n\n**Result: PASS for controlled inbound document scenario**\n\nThe immutable candidate image was deployed to the OCI rehearsal WEB + WORKER runtime while preserving the existing stable HTTPS and OCI Active Storage configuration. WEB returned HTTP 200 and WORKER started normally.\n\nA fresh document sent through `@wise_chatwoot_poc_bot` was observed in `https://support.wisehealth.in` as **one message only**, with the attachment successfully downloadable/openable. No duplicate was observed.\n\nThis validates the targeted document path on the candidate runtime and is consistent with the intended Telegram retry/idempotency behaviour. The broader attachment matrix is not automatically closed by this single document test; image/Rx and repeated-event regression remain separate checks.\n\n\n## Full inbound attachment + assignment regression — 2026-10-03\n\n**Result: PASS**\n\nAfter the initial successful document test, a fresh image attachment was also sent through the rehearsal bot. The image opened successfully in Chatwoot, no duplicate inbound message was observed, and the inbound messages landed in the Support Rep's **Mine** inbox. Replies from Chatwoot were received successfully by Telegram.\n\nThis extends the OCI validation from a document-only scenario to both document and image inbound attachments and confirms the expected support-rep assignment state in the tested conversation.\n\nThe formal Inbox/Conversation operating-model and lifecycle SOP work remains separate.\n\n\n## Assignment / Inbox checkpoint — 2026-10-03\n\nThe latest document + image inbound validation provided positive assignment evidence: both fresh inbound messages appeared in the Support Rep's **Mine** inbox, with no duplicate messages and successful replies back to Telegram.\n\nAssignment is therefore **PASS for the tested scenario**. Formal SOP coverage remains for Unassigned handling, resolution/re-entry, continuation/new-conversation semantics and refresh/re-entry consistency.\n\nDetailed operating model: `docs/WISE-SUPPORT-ASSIGNMENT-INBOX-CONVERSATION-SOP-2026-10-03.md`.\n
+
+## Telegram welcome/start candidate — 2026-10-05
+
+**Status:** Local application validation PASS; OCI runtime validation pending
+
+The feature/telegram-start-welcome candidate has passed the focused Telegram service suite:
+
+    33 examples, 0 failures
+
+The implementation now intercepts the WISE deep-link handshake /start support and creates a WISE Support welcome message instead of persisting the technical command as an inbound patient message. The matcher is intentionally limited to /start support.
+
+Published immutable OCI candidate:
+
+    ghcr.io/wisedoctor/wise-support-chat@sha256:0b1c591f56a1e7ad180f67a0646ca6fc04b957abcd01fbb96f2e183eef467d5b
+
+### Required hosted validation
+
+Run the established text regression first, then test a fresh Telegram deep-link entry using @wise_chatwoot_poc_bot:
+
+1. open the WISE CTA/deep link;
+2. confirm Telegram sends /start support;
+3. confirm Chatwoot does not show the technical command as the patient-facing inbound message;
+4. confirm the WISE welcome is delivered to Telegram;
+5. reply from the patient side;
+6. confirm the support rep receives the reply in the same conversation;
+7. confirm no duplicate welcome or message loop occurs;
+8. confirm the existing two-way text regression remains PASS.
+
+This is a candidate runtime validation only until the OCI result is recorded.
