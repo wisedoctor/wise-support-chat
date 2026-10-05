@@ -45,7 +45,7 @@ class Telegram::IncomingMessageService
 
   def support_start_command?
     message_content = telegram_params_message_content.to_s.strip
-    message_content.match?(%r{\A/start(?:\s+support)?\z}i)
+    message_content.match?(%r{\A/start\s+support\z}i)
   end
 
   def create_support_welcome_message
