@@ -62,12 +62,14 @@ describe Telegram::IncomingMessageService do
     end
 
     context 'when /start support is received' do
-      it 'creates a WISE welcome message instead of storing the technical start command' do
-        params = {
+      let(:params) do
+        {
           'update_id' => 2_342_342_343_242,
           'message' => { 'text' => '/start support' }.merge(message_params)
         }.with_indifferent_access
+      end
 
+      it 'creates a WISE welcome message instead of storing the technical start command' do
         described_class.new(inbox: telegram_channel.inbox, params: params).perform
 
         message = telegram_channel.inbox.messages.first
@@ -75,10 +77,21 @@ describe Telegram::IncomingMessageService do
         expect(telegram_channel.inbox.messages.count).to eq(1)
         expect(message.message_type).to eq('outgoing')
         expect(message.sender).to be_nil
-        expect(message.source_id).to eq('telegram_start:1')
+        expect(message.source_id).to be_nil
+        expect(message.additional_attributes['telegram_start_message_id']).to eq('1')
         expect(message.content).to eq(
           "Welcome to WISE Support 👋\nTell us what you need help with. If this is about an existing WISE request, please share the request/reference number if you have it."
         )
+      end
+
+      it 'does not create a duplicate welcome when the same Telegram start event is retried' do
+        service = described_class.new(inbox: telegram_channel.inbox, params: params)
+
+        service.perform
+        expect { service.perform }.not_to change(telegram_channel.inbox.messages, :count)
+
+        expect(telegram_channel.inbox.messages.count).to eq(1)
+        expect(telegram_channel.inbox.messages.first.additional_attributes['telegram_start_message_id']).to eq('1')
       end
     end
 
