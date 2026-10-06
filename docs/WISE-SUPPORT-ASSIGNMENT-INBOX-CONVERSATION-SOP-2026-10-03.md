@@ -80,19 +80,35 @@ The latest controlled OCI validation demonstrated this path with:
 
 ## 3. Assignment evidence
 
-The latest fresh document + image scenario provides positive evidence that the current rehearsal configuration can place the resulting conversation in **Mine**.
+### Telegram rehearsal
 
-Earlier smoke-test evidence also recorded a system-generated assignment:
+Earlier Telegram rehearsal evidence recorded a system-generated assignment:
 
 `Assigned to Sreedhar Byreeka by Default Policy`
 
-No manual assignment script was used for that successful assignment.
+No manual assignment script was used for that successful assignment. This remains valid evidence that Chatwoot's normal automatic-assignment path can work when an eligible agent is available through the runtime presence path.
+
+### Website Inbox rehearsal
+
+The latest fresh-browser WISE Health™ Support tests created genuinely new Website Inbox conversations. Both remained in **Unassigned** after waiting and after logging out/in again.
+
+The Website Inbox configuration currently shows:
+
+- collaborators: Kranthi and Sreedhar Byreeka;
+- automatic conversation assignment: enabled;
+- Default assignment rules;
+- earliest-created conversations first;
+- round-robin distribution.
+
+The current evidence therefore does **not** justify marking Website Inbox auto-assignment PASS. The next controlled test must verify runtime agent availability/presence while creating a genuinely new web conversation.
 
 ### Current conclusion
 
-**Assignment for the tested scenario: PASS.**
+**Telegram assignment path: previously proven PASS for the tested scenario.**
 
-This should not be interpreted as proof that every assignment lifecycle state has been rehearsed.
+**Website Inbox auto-assignment: OPEN / not yet proven.**
+
+Do not work around this by manually assigning every web conversation. First verify the normal Chatwoot availability and assignment path.
 
 ## 4. Required lifecycle SOP
 
