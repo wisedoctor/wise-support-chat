@@ -1,6 +1,6 @@
 # WISE Support — Website Inbox Configuration & Web-Channel Notes — 2026-10-06
 
-**Status:** Pilot-prep operational checkpoint  
+**Status:** Pilot-prep operational checkpoint — **Web Support E2E CLOSED / PASS**  
 **Environment:** OCI-hosted Chatwoot / WISE Health Website Support  
 **Public portal:** https://support.wisehealth.in  
 **WISE entry point:** https://wisehealth.in/support
@@ -176,9 +176,47 @@ This is expected Chatwoot anonymous-contact behaviour observed during the rehear
 - Do not introduce frontend workarounds to simulate Chatwoot conversation events.
 - Record configuration changes in the Support operational documentation.
 
-## 9. Follow-up items
+## 9. Closure evidence
 
-1. Verify conversation persistence/re-entry after close/refresh.
-2. Decide whether the channel greeting timing is acceptable for pilot or needs a small Chatwoot-side configuration/implementation change.
-3. Keep the welcome wording flexible; if code-level environment configuration is later required, implement it within the Support implementation boundary rather than the WISE entry-point page.
-4. Include the successful web E2E and assignment evidence in the formal Ops Support SOP/handover.
+The native Web Support lifecycle is now **PASS / CLOSED for pilot preparation**.
+
+The final persistence/re-entry test confirmed that the Website Inbox conversation and history remained available after:
+
+- closing and reopening the widget;
+- refreshing the WISE Health `/support` page;
+- logging out of Chatwoot and logging back in;
+- reopening the Inbox/conversation view.
+
+Together with the earlier controlled fresh-browser test, the proven lifecycle is:
+
+    wisehealth.in/support
+          ↓
+    Chatwoot Website Widget
+          ↓
+    Start Conversation
+          ↓
+    Patient message
+          ↓
+    WISE Health™ Support Inbox
+          ↓
+    Default Policy assignment
+          ↓
+    Support Rep / Mine
+          ↓
+    Support Rep reply
+          ↓
+    Browser receives reply
+          ↓
+    Conversation/history persists across re-entry
+
+## 10. Remaining non-blocking UX consideration
+
+The channel greeting currently appears after the patient's first message because that is the configured Chatwoot Channel Greeting behaviour. This is accepted for pilot readiness and is not a closure blocker.
+
+If the positioning later requires an immediate post-Start welcome, treat that as a separate small UX enhancement. Do not reopen the closed E2E workstream merely to change greeting timing.
+
+The welcome wording should remain flexible; if code-level environment configuration is later required, implement it within the Support implementation boundary rather than the WISE entry-point page.
+
+## 11. Formal handover
+
+Include this closure evidence in the formal Ops Support SOP/handover before moving to the RBAC workstream.
