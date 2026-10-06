@@ -876,6 +876,39 @@ Required validation order:
 Do not merge the branch or treat the OCI rollout as complete until this controlled runtime validation is recorded.
 \n\n## Latest OCI retry/idempotency checkpoint — 2026-10-03\n\n**Status: PASS — candidate runtime validated for inbound document + duplicate-message scenario**\n\nThe controlled OCI rollout of the Telegram retry/idempotency candidate is now complete for the tested document scenario.\n\n### Proven\n\n- Immutable candidate image: `ghcr.io/wisedoctor/wise-support-chat@sha256:8212ed18698c959105376a0f3c1eef1780e6cd096ece885e83cb07ea28e0ccb0`.\n- WEB healthy; local HTTP check returned 200.\n- WORKER healthy; Sidekiq connected to Redis and processed jobs.\n- `FRONTEND_URL=https://support.wisehealth.in` preserved.\n- OCI S3-compatible Active Storage configuration preserved on WEB and WORKER.\n- Fresh inbound document through `@wise_chatwoot_poc_bot` appeared as **one Chatwoot message**.\n- Attachment opened/downloaded successfully.\n\n### Interpretation\n\nThis closes the controlled OCI validation step for the targeted inbound document/idempotency scenario. It is not a blanket declaration that all Telegram media variants or all retry permutations are complete. Image/Rx regression and any deliberately repeated-event test can remain as explicit follow-up coverage.\n\n### Operational note\n\nSome post-test log commands returned `No such container: wise-support-chat-worker` / `wise-support-chat-web`. This occurred because the expected container names no longer matched the active container names at the time of those commands. It does not contradict the earlier health checks or the successful end-to-end portal test. Current container names should be enumerated before further diagnostics.\n\n\n## Full inbound media + assignment checkpoint — 2026-10-03\n\nThe candidate OCI runtime has now been validated with both document and image inbound attachments. Both opened successfully in Chatwoot, no duplicate messages were observed, the messages landed in the Support Rep's **Mine** inbox, and replies were received back in Telegram.\n\nThis closes the targeted inbound media/idempotency validation for the tested document + image scenarios. Continue to retain the current runtime and rollback artifacts while the remaining pilot-prep work moves forward.\n\nAssignment behaviour is now positively demonstrated for this scenario, but the separate operational SOP should still document Inbox, Conversation, Mine, Unassigned, resolution and re-entry behaviour before the assignment workstream is formally closed.\n\n\n## Assignment / Inbox operating-model checkpoint — 2026-10-03\n\nThe latest OCI validation confirms the tested assignment path: fresh inbound document and image messages landed in the Support Rep's **Mine** inbox and replies returned successfully to Telegram.\n\nAssignment is now treated as a focused SOP/lifecycle verification item rather than an unresolved implementation defect. The dedicated operating-model document is `docs/WISE-SUPPORT-ASSIGNMENT-INBOX-CONVERSATION-SOP-2026-10-03.md`.\n\nNext pilot-prep slice: Welcome message / Telegram `/start` UX, followed by context handoff and production entry-point audit.\n
 
+## Native WISE Health Web Support closure checkpoint — 2026-10-06
+
+**Status: PASS — Web Support E2E closed for pilot preparation**
+
+The WISE Health native `/support` journey is now proven end-to-end in a fresh browser and across re-entry.
+
+### Proven lifecycle
+
+- `wisehealth.in/support` loads the Chatwoot Website Widget.
+- Start Conversation works.
+- Patient message reaches the WISE Health™ Support Inbox.
+- With the eligible support agent actively available, Chatwoot automatically assigns the conversation by Default Policy to Sreedhar Byreeka.
+- The conversation appears under **Mine**.
+- Support Rep replies reach the browser widget.
+- Conversation/history persists after widget close/reopen.
+- Conversation/history persists after page refresh.
+- Conversation/Inbox state remains available after Chatwoot logout/login and reopening the Inbox.
+
+### Operational conclusions
+
+- Website Inbox automatic assignment is **PASS for the tested active-agent scenario**.
+- Earlier Unassigned observations are retained as a diagnostic example and do not justify custom assignment logic.
+- The Chatwoot Channel Greeting is intentionally delivered after the patient's first message; this is accepted as a non-blocking pilot UX characteristic.
+- Anonymous visitor names such as `Muddy-Snowflake-479` / `Rough-Rain-963` are expected Chatwoot behaviour and are not a pilot defect.
+- Website Widget token troubleshooting must use the token from the generated **Settings → Script**; Vercel must match that value. Do not invent a token or substitute unrelated credentials.
+
+### Closure decision
+
+The native Web Support implementation/operational rehearsal is **closed for pilot preparation**. Do not reopen the implementation workstream unless a new production requirement or a reproducible defect is identified.
+
+Formal Ops SOP/handover documentation should now consolidate the Telegram and Web Support operating paths. The next architecture milestone is WISE Ops RBAC and initial operational hand-off.
+
+
 ## Latest /start support checkpoint — 2026-10-06
 
 The OCI rollout of the first `/start support` candidate proved the Telegram deep-link path itself. Telegram delivered `/start support` to Chatwoot and the technical command was persisted in the conversation. The candidate also created the WISE welcome message in Chatwoot and enqueued `SendReplyJob`, but the welcome did not reach Telegram.
