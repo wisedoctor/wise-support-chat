@@ -33,24 +33,25 @@ This distinction explains the earlier apparent token mismatch and should be used
 
 **Priority:** High  
 **Phase:** Pilot readiness  
-**Status:** **In progress**
+**Status:** **Nearly closed — persistence/re-entry remains**
 
-Proven:
+Proven in the controlled fresh-browser rehearsal:
 
 - WISE Health `/support` loads the native Chatwoot Website Widget;
 - Start Conversation works;
 - fresh anonymous web conversations reach the WISE Health™ Support Inbox;
 - patient messages reach Chatwoot;
-- Ops-side conversation visibility is working.
+- automatic assignment works when the eligible support agent is actively available;
+- conversation was assigned by **Default Policy** to Sreedhar Byreeka and appeared under **Mine**;
+- Ops Rep reply reached the browser widget in the same conversation;
+- two-way web communication is therefore PASS.
 
-Still to close:
+Remaining closure check:
 
-- Website Inbox automatic assignment;
-- Ops Rep reply back to the browser in the same controlled fresh-conversation test;
 - persistence/re-entry after close/refresh;
 - final operational SOP disposition.
 
-Current fresh-browser tests show new Website Inbox conversations remaining **Unassigned**. Do not treat this as a universal Chatwoot assignment failure until runtime online-agent availability is checked during a genuinely new conversation.
+Earlier Unassigned observations are retained as a useful diagnostic example. They are not evidence that the configured Website Inbox assignment policy is broken; the controlled active-agent test subsequently assigned the conversation correctly.
 
 ## 0C. Web greeting timing
 
@@ -182,8 +183,8 @@ This should eventually be provider-neutral and mapped into Chatwoot attributes/c
 ## 5. Chatwoot auto-assignment quirk
 
 **Priority:** High  
-**Phase:** Pilot blocker / configuration investigation  
-**Status:** Open
+**Phase:** Pilot readiness  
+**Status:** **Resolved for tested Website Inbox scenario**
 
 Auto-assignment behaviour remains inconsistent during the dress rehearsal.
 
@@ -194,17 +195,15 @@ Observed states have included:
 - some conversations appearing under **Unassigned** rather than **My Inbox**;
 - other conversations subsequently appearing assigned to the configured support user.
 
-Investigate the complete assignment path, including:
+The controlled fresh-browser test with the support agent actively connected produced:
 
-- account-level agent availability;
-- inbox membership;
-- inbox auto-assignment configuration;
-- assignment policy;
-- conversation creation vs subsequent inbound messages;
-- worker execution and timing;
-- Chatwoot version-specific assignment behaviour.
+- new Website Inbox conversation;
+- automatic assignment by Default Policy;
+- assignment to Sreedhar Byreeka;
+- conversation visible under Mine;
+- two-way reply path PASS.
 
-Do not work around this by manually assigning every conversation. The pilot should establish a predictable support-rep queue behaviour.
+Earlier Unassigned observations should be retained as a diagnostic example. For the tested scenario, the normal Chatwoot assignment path is operational. Do not introduce custom assignment code for this pilot based on the earlier transient Unassigned state.
 
 ---
 
