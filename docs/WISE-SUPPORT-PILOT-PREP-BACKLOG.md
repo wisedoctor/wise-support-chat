@@ -6,6 +6,67 @@
 
 This backlog captures the pilot-prep work identified during the OCI-hosted Chatwoot dress rehearsal and the wider WISE context-aware entry-point review.
 
+
+---
+
+## 0A. Website Inbox configuration semantics — documented
+
+**Priority:** Operational reference  
+**Phase:** Pilot preparation  
+**Status:** **Resolved / documented**
+
+The WISE Health Website Inbox exposes more than one token-like credential.
+
+The **generated Script** under Website Inbox Settings contains the authoritative Website Widget `websiteToken`. This is the value persisted as `Channel::WebWidget.website_token` and the value that must be synchronized with:
+
+`VITE_WISE_SUPPORT_CHAT_WEBSITE_TOKEN`
+
+The **Configuration → Identity Validation → Secret Key** is a separate HMAC/identity-validation credential. It is not the Website Widget token and must not be copied into the Vercel widget configuration.
+
+See:
+
+`docs/WISE-SUPPORT-WEB-CHANNEL-CONFIGURATION-OPERATIONS-2026-10-06.md`
+
+This distinction explains the earlier apparent token mismatch and should be used as the operational troubleshooting rule.
+
+## 0B. Native Web Support E2E
+
+**Priority:** High  
+**Phase:** Pilot readiness  
+**Status:** **In progress**
+
+Proven:
+
+- WISE Health `/support` loads the native Chatwoot Website Widget;
+- Start Conversation works;
+- fresh anonymous web conversations reach the WISE Health™ Support Inbox;
+- patient messages reach Chatwoot;
+- Ops-side conversation visibility is working.
+
+Still to close:
+
+- Website Inbox automatic assignment;
+- Ops Rep reply back to the browser in the same controlled fresh-conversation test;
+- persistence/re-entry after close/refresh;
+- final operational SOP disposition.
+
+Current fresh-browser tests show new Website Inbox conversations remaining **Unassigned**. Do not treat this as a universal Chatwoot assignment failure until runtime online-agent availability is checked during a genuinely new conversation.
+
+## 0C. Web greeting timing
+
+**Priority:** Pilot UX  
+**Phase:** Pilot readiness  
+**Status:** **Observed / decision pending**
+
+The Website Inbox has **Enable channel greeting** enabled. Chatwoot explicitly describes this as an automatic greeting when customers start a conversation and send their first message.
+
+Observed behaviour: the configured conversation greeting appears after the patient's first message rather than immediately after Start Conversation.
+
+For the current pilot, do not introduce a frontend-generated/fake message to force earlier delivery. First determine whether native Chatwoot configuration can provide the desired timing. If not, defer as a small UX enhancement.
+
+The separate widget Welcome Heading/Tagline remains the pre-conversation welcome.
+
+
 The current dress rehearsal has proven the core text communication path in both directions. The remaining items below are deliberately separated into **pilot blockers**, **pilot UX/configuration work**, and **future architecture** so that unresolved future design does not hold up the proven core path.
 
 ---
