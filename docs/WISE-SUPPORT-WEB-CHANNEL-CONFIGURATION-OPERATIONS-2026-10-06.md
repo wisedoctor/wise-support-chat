@@ -5,13 +5,13 @@
 **Public portal:** https://support.wisehealth.in  
 **WISE entry point:** https://wisehealth.in/support
 
-## 1. Website Token — authoritative configuration rule
+## 1. Website Widget token — authoritative configuration rule
 
-The WISE Health Website Inbox exposes several token/credential values in the Chatwoot UI. They are **not interchangeable**.
+The Website Inbox has more than one token/credential visible in the Chatwoot UI. They must **not be conflated**.
 
 ### Website Widget token
 
-The definitive Website Widget token is the value embedded in the generated **Script** shown under the Website Inbox **Settings** page.
+The authoritative Website Widget token for the running WISE Health™ Support channel is the value embedded in the generated **Script** shown under the Website Inbox **Settings** page.
 
 The generated script contains:
 
@@ -20,7 +20,7 @@ The generated script contains:
       baseUrl: 'https://support.wisehealth.in'
     })
 
-This websiteToken is the value persisted as:
+This is the value persisted as:
 
     Channel::WebWidget.website_token
 
@@ -28,15 +28,15 @@ and is the value required by the browser widget request:
 
     /widget?website_token=<website widget token>
 
-### Identity Validation Secret Key
+### Identity Validation credential
 
-The **Configuration** tab contains a separate **Identity Validation → Secret Key**.
+The **Configuration → Identity Validation → Secret Key** is a separate credential in Chatwoot's documented identity-validation feature. It is used for identity verification/HMAC flows and is **not interchangeable with the Website Widget token**.
 
-This is an identity-validation/HMAC credential. It is **not** the Website Widget token and must not be copied into:
+Operationally, for this deployment, the key rule is simple:
 
-    VITE_WISE_SUPPORT_CHAT_WEBSITE_TOKEN
-
-Do not rotate or replace either credential merely to make them match.
+- do not invent or substitute a value into the generated widget Script;
+- use the Website Widget token that Chatwoot generates in the Script;
+- keep the Identity Validation credential separate unless identity validation is deliberately enabled and implemented.
 
 ### Vercel synchronization rule
 
@@ -119,7 +119,7 @@ Do not implement a frontend-generated fake/hidden patient message merely to forc
 
 ## 5. Web Support E2E checkpoint
 
-The following is proven:
+The controlled fresh-browser rehearsal has now proven:
 
     wisehealth.in/support
           ↓
@@ -130,10 +130,18 @@ The following is proven:
     Patient message
           ↓
     WISE Health™ Support Inbox
+          ↓
+    Default Policy assignment
+          ↓
+    Sreedhar Byreeka / Mine
+          ↓
+    Support Rep reply
+          ↓
+    Browser receives reply
 
-The current fresh-browser rehearsal showed the new web conversations arriving in **Unassigned**.
+The successful test recorded **Assigned to Sreedhar Byreeka by Default Policy** and demonstrated two-way messaging in the same conversation.
 
-Automatic assignment remains an operational verification item and must be tested separately with a genuinely new conversation while an eligible agent has active Chatwoot online presence.
+The earlier Unassigned observations are retained as a diagnostic/operational observation. The controlled test confirms that automatic assignment works when the normal Chatwoot agent availability/presence path is satisfied.
 
 ## 6. Assignment configuration observed
 
@@ -170,8 +178,7 @@ This is expected Chatwoot anonymous-contact behaviour observed during the rehear
 
 ## 9. Follow-up items
 
-1. Complete web E2E: patient → Inbox → assignment/claim → Ops reply → browser.
-2. Verify conversation persistence/re-entry.
-3. Reconcile the final auto-assignment behaviour under active agent presence.
-4. Decide whether the channel greeting timing is acceptable for pilot or needs a small Chatwoot-side configuration/implementation change.
-5. Keep the welcome wording flexible; if code-level environment configuration is later required, implement it within the Support implementation boundary rather than the WISE entry-point page.
+1. Verify conversation persistence/re-entry after close/refresh.
+2. Decide whether the channel greeting timing is acceptable for pilot or needs a small Chatwoot-side configuration/implementation change.
+3. Keep the welcome wording flexible; if code-level environment configuration is later required, implement it within the Support implementation boundary rather than the WISE entry-point page.
+4. Include the successful web E2E and assignment evidence in the formal Ops Support SOP/handover.
