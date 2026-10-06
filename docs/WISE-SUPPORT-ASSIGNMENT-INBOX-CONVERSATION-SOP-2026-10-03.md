@@ -90,9 +90,9 @@ No manual assignment script was used for that successful assignment. This remain
 
 ### Website Inbox rehearsal
 
-The latest fresh-browser WISE Health™ Support tests created genuinely new Website Inbox conversations. Both remained in **Unassigned** after waiting and after logging out/in again.
+The first fresh-browser tests created genuinely new Website Inbox conversations that remained in **Unassigned**, which correctly led to a focused assignment investigation rather than a code change.
 
-The Website Inbox configuration currently shows:
+The Website Inbox configuration shows:
 
 - collaborators: Kranthi and Sreedhar Byreeka;
 - automatic conversation assignment: enabled;
@@ -100,15 +100,19 @@ The Website Inbox configuration currently shows:
 - earliest-created conversations first;
 - round-robin distribution.
 
-The current evidence therefore does **not** justify marking Website Inbox auto-assignment PASS. The next controlled test must verify runtime agent availability/presence while creating a genuinely new web conversation.
+A subsequent controlled fresh-browser test, with the support agent actively connected to Chatwoot, produced a new Website Inbox conversation that was automatically assigned by the Default Policy to Sreedhar Byreeka and appeared under **Mine**. The Chatwoot conversation timeline recorded:
+
+`Assigned to Sreedhar Byreeka by Default Policy`
+
+The same conversation was then used to validate two-way messaging: the patient message was visible in Chatwoot, the Support Rep replied, and the reply was received in the browser widget.
 
 ### Current conclusion
 
-**Telegram assignment path: previously proven PASS for the tested scenario.**
+**Telegram assignment path: PASS for the tested scenarios.**
 
-**Website Inbox auto-assignment: OPEN / not yet proven.**
+**Website Inbox automatic assignment: PASS for the controlled tested scenario.**
 
-Do not work around this by manually assigning every web conversation. First verify the normal Chatwoot availability and assignment path.
+Operational note: assignment is dependent on the normal Chatwoot agent availability/presence path. The earlier Unassigned observations should therefore be retained as a diagnostic example, not treated as proof that the configured assignment policy is broken.
 
 ## 4. Required lifecycle SOP
 
